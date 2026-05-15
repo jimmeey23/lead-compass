@@ -120,7 +120,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
       className="fixed right-0 top-0 z-[140] h-screen w-full overflow-y-auto border-l border-slate-300/70 bg-white shadow-elevated md:w-[640px]"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[linear-gradient(135deg,#0f172a,#13213b,#1e3a5f)] p-5 text-white">
+      <div className="sticky top-0 z-10 bg-[linear-gradient(135deg,#1d4ed8,#2563eb,#06b6d4)] p-5 text-white">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold">{draft.fullName}</h2>
@@ -268,7 +268,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
                 <Button type="button" variant="outline" onClick={resetDraft} className="rounded-xl border-slate-300 bg-white text-slate-800 hover:bg-slate-100">
                   <RotateCcw className="h-4 w-4 mr-1.5" /> Reset changes
                 </Button>
-                <Button type="button" onClick={handleSave} disabled={updateLead.isPending} className="rounded-xl gap-1.5 bg-slate-900 text-white hover:bg-slate-800">
+                <Button type="button" onClick={handleSave} disabled={updateLead.isPending} className="rounded-xl gap-1.5 bg-blue-600 text-white hover:bg-blue-700">
                   <Save className="h-4 w-4" /> {updateLead.isPending ? 'Saving…' : 'Save to Momence'}
                 </Button>
               </div>
@@ -377,7 +377,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MetricCard({ label, value, highlight, highlightDestructive }: { label: string; value: string; highlight?: boolean; highlightDestructive?: boolean }) {
   return (
-    <div className={`rounded-xl border p-3.5 ${highlight ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white'}`}>
+    <div className={`rounded-xl border p-3.5 ${highlight ? 'border-blue-200 bg-blue-600 text-white' : 'border-slate-200 bg-white'}`}>
       <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider ${highlight ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
       <p className={`font-mono text-lg font-bold ${highlight ? 'text-white' : 'text-slate-900'}`}>{value}</p>
     </div>

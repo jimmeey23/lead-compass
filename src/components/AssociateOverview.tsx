@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LeadDrillDown } from './LeadDrillDown';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { LeadHoverInfo, LeadSourceBadge, LeadStageBadge, LeadStatusBadge } from './LeadDisplay';
+import { isSalesConvertedLead } from '@/lib/lead-utils';
 
 interface Props {
   leads: Lead[];
@@ -29,9 +30,9 @@ export function computeAssociateStats(leads: Lead[]): AssociateStats[] {
   });
 
   return Array.from(map.entries()).map(([name, aLeads]) => {
-    const converted = aLeads.filter(l => l.conversionStatus === 'Converted').length;
+    const converted = aLeads.filter(isSalesConvertedLead).length;
     const lost = aLeads.filter(isLostLead).length;
-    const active = aLeads.filter(l => !isLostLead(l) && l.conversionStatus !== 'Converted').length;
+    const active = aLeads.filter(l => !isLostLead(l) && !isSalesConvertedLead(l)).length;
     const totalFollowUps = aLeads.reduce((sum, l) => sum + l.followUps.filter(f => f.date && f.date !== '-').length, 0);
     const overdueFollowUps = aLeads.reduce((sum, l) => sum + l.followUps.filter(f => isOverdue(f.date, l.status)).length, 0);
     const totalLtv = aLeads.reduce((sum, l) => sum + l.ltv, 0);
@@ -63,7 +64,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
 
   const totalLeads = leads.length;
   const needsAction = leads.filter(l => l.followUps.some(f => isOverdue(f.date, l.status))).length;
-  const totalConverted = leads.filter(l => l.conversionStatus === 'Converted').length;
+  const totalConverted = leads.filter(isSalesConvertedLead).length;
   const totalLost = leads.filter(isLostLead).length;
   const overallConvRate = totalLeads > 0 ? ((totalConverted / totalLeads) * 100).toFixed(1) : '0';
   const totalRevenue = leads.reduce((sum, lead) => sum + lead.ltv, 0);
@@ -167,7 +168,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-2 w-20 overflow-hidden rounded-full bg-border/40">
-                          <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.min(s.conversionRate, 100)}%` }} />
+                          <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(s.conversionRate, 100)}%` }} />
                         </div>
                         <span className="text-xs font-mono font-medium text-foreground whitespace-nowrap">{s.conversionRate.toFixed(1)}%</span>
                       </div>
@@ -179,7 +180,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                     <td className="px-5 py-3 text-sm font-mono text-foreground whitespace-nowrap">{formatCompactIndianCurrency(s.avgLtv)}</td>
                     <td className="px-5 py-3 text-sm font-mono text-foreground">{s.centersCovered}</td>
                     <td className={`px-5 py-3 text-sm font-mono ${s.overdueFollowUps > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                      {s.overdueFollowUps > 0 && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-slate-900" />}
+                      {s.overdueFollowUps > 0 && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />}
                       {s.overdueFollowUps}
                     </td>
                     <td className="px-5 py-3 text-sm font-mono font-medium text-foreground whitespace-nowrap">{formatCompactIndianCurrency(s.totalLtv)}</td>
@@ -192,7 +193,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                   {expandedAssociate === s.name && (
                     <tr>
                       <td colSpan={14} className="p-0 border-b border-border/15">
-                        <div className="bg-slate-950/[0.04] px-5 py-3">
+                        <div className="bg-blue-50/45 px-5 py-3">
                           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
                             {s.name}'s Leads ({associateLeads.length})
                           </p>

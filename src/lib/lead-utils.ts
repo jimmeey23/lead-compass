@@ -1,8 +1,12 @@
-import type { Lead, GroupableLeadKey, LeadOptionSets } from '@/types/leads';
+import { getDateRange, parseDateStr } from '@/types/leads';
+import type { Lead, GroupableLeadKey, LeadOptionSets, FilterState } from '@/types/leads';
 
 const DATE_ARTIFACT_RE = /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}.*$/;
 
 const CENTER_ALIASES: Array<[RegExp, string]> = [
+  [/kwality\s*(?:house|hse)?\s*,?\s*(?:kemps|kemp'?s)\s*(?:corner|cor|crnr)?/i, 'Kwality House, Kemps Corner'],
+  [/(?:kemps|kemp'?s)\s*(?:corner|cor|crnr).*kwality/i, 'Kwality House, Kemps Corner'],
+  [/physique\s*57.*(?:kemps|kemp'?s)/i, 'Kwality House, Kemps Corner'],
   [/supreme\s*(?:headquarters|hq).*(bandra)/i, 'Supreme Headquarters, Bandra'],
   [/supreme\s*(?:headquarters|hq).*(juhu)/i, 'Supreme Headquarters, Juhu'],
   [/supreme\s*(?:headquarters|hq).*(andheri)/i, 'Supreme Headquarters, Andheri'],
@@ -117,7 +121,13 @@ export function normalizePersonName(value: string | null | undefined): string {
 }
 
 export function normalizeCenterName(value: string | null | undefined): string {
-  const cleaned = cleanLooseText(value);
+  const cleaned = cleanLooseText(value)
+    .replace(/\bshq\b/gi, 'Supreme HQ')
+    .replace(/\bkc\b/gi, 'Kemps Corner')
+    .replace(/[|/]+/g, ',')
+    .replace(/\s*-\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!cleaned) return '';
 
   const alias = CENTER_ALIASES.find(([pattern]) => pattern.test(cleaned));
@@ -162,6 +172,13 @@ export function parseFlexibleDate(dateStr: string): Date | null {
 
   const date = new Date(dateStr);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function isSalesConvertedLead(lead: Lead): boolean {
+  return (
+    cleanLooseText(lead.conversionStatus).toLowerCase() === 'converted' &&
+    Boolean(parseFlexibleDate(lead.convertedAt))
+  );
 }
 
 export function formatMomenceDate(dateStr: string): string {
@@ -291,6 +308,147 @@ export function buildLeadOptions(leads: Lead[]): LeadOptionSets {
   };
 }
 
+function normalizeHeader(value: string): string {
+  return cleanLooseText(value).toLowerCase();
+}
+
+function findColumnIndex(headers: string[], candidates: string[]): number {
+  const normalizedCandidates = candidates.map(normalizeHeader);
+  return headers.findIndex((header) => normalizedCandidates.includes(normalizeHeader(header)));
+}
+
+function getCell(row: string[], index: number): string {
+  return index >= 0 ? cleanLooseText(row[index] || '') : '';
+}
+
+function isSuccessfulSale(status: string): boolean {
+  return !status || /^succeeded$/i.test(status);
+}
+
+function parseMoneyValue(value: string): number {
+  const normalized = cleanLooseText(value).replace(/,/g, '');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatConversionDateForLead(value: string): string {
+  return cleanLooseText(value);
+}
+
+function getSalesConversionRows(salesRows: string[][]) {
+  const [headers = [], ...rows] = salesRows;
+  const memberIdIndex = findColumnIndex(headers, ['Member ID']);
+  const paymentDateIndex = findColumnIndex(headers, ['Payment Date']);
+  const paymentValueIndex = findColumnIndex(headers, ['Payment Value']);
+  const paymentStatusIndex = findColumnIndex(headers, ['Payment Status']);
+  const cleanedProductIndex = findColumnIndex(headers, ['Cleaned Product']);
+  const cleanedCategoryIndex = findColumnIndex(headers, ['Cleaned Category']);
+  const purchaseTagIndex = findColumnIndex(headers, ['Purchase Tag']);
+
+  if (memberIdIndex < 0 || paymentDateIndex < 0) return [];
+
+  return rows
+    .map((row) => ({
+      memberId: getCell(row, memberIdIndex),
+      paymentDate: getCell(row, paymentDateIndex),
+      paymentValue: parseMoneyValue(getCell(row, paymentValueIndex)),
+      paymentStatus: getCell(row, paymentStatusIndex),
+      cleanedProduct: getCell(row, cleanedProductIndex),
+      cleanedCategory: getCell(row, cleanedCategoryIndex),
+      purchaseTag: getCell(row, purchaseTagIndex),
+      parsedPaymentDate: parseFlexibleDate(getCell(row, paymentDateIndex)),
+    }))
+    .filter((sale) => (
+      sale.memberId &&
+      sale.paymentDate &&
+      sale.parsedPaymentDate &&
+      sale.paymentValue > 0 &&
+      isSuccessfulSale(sale.paymentStatus) &&
+      !/\bretail\b/i.test(sale.cleanedCategory) &&
+      !/(?:2\s*for\s*1|money\s*credits?)/i.test(sale.cleanedProduct)
+    ));
+}
+
+export function enrichLeadsWithSalesConversions(leads: Lead[], salesRows: string[][]): Lead[] {
+  const salesByMemberId = new Map<string, ReturnType<typeof getSalesConversionRows>>();
+  const sales = getSalesConversionRows(salesRows);
+
+  for (const sale of sales) {
+    const memberSales = salesByMemberId.get(sale.memberId) ?? [];
+    memberSales.push(sale);
+    salesByMemberId.set(sale.memberId, memberSales);
+  }
+
+  return leads.map((lead) => {
+    const leadCreatedAt = parseFlexibleDate(lead.createdAt);
+    const memberSales = salesByMemberId.get(cleanLooseText(lead.memberId)) ?? [];
+    const sale = memberSales
+      .filter((candidate) => {
+        if (!candidate.parsedPaymentDate) return false;
+        if (!leadCreatedAt) return true;
+        return candidate.parsedPaymentDate > leadCreatedAt;
+      })
+      .sort((a, b) => {
+        const aTime = a.parsedPaymentDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const bTime = b.parsedPaymentDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
+      })[0];
+
+    if (!sale) {
+      return {
+        ...lead,
+        convertedAt: '',
+        conversionStatus: '',
+      };
+    }
+
+    return {
+      ...lead,
+      convertedAt: formatConversionDateForLead(sale.paymentDate),
+      conversionStatus: 'Converted',
+    };
+  });
+}
+
+export function applyLeadFilters(leads: Lead[], filters: FilterState): Lead[] {
+  const createdDateRange = getDateRange(filters.datePreset, filters.customDateFrom, filters.customDateTo);
+  const convertedDateRange = getDateRange(filters.convertedDatePreset, filters.convertedDateFrom, filters.convertedDateTo);
+
+  return leads.filter((lead) => {
+    if (filters.associate !== 'all' && lead.associate !== filters.associate) return false;
+    if (filters.status.length > 0 && !filters.status.includes(lead.status)) return false;
+    if (filters.stageName.length > 0 && !filters.stageName.includes(lead.stageName)) return false;
+    if (filters.center !== 'all' && cleanLooseText(lead.center).toLowerCase() !== cleanLooseText(filters.center).toLowerCase()) return false;
+    if (filters.sourceName.length > 0 && !filters.sourceName.includes(lead.sourceName)) return false;
+    if (filters.channel.length > 0 && !filters.channel.includes(lead.channel)) return false;
+    if (filters.conversionStatus.length > 0 && !filters.conversionStatus.includes(lead.conversionStatus)) return false;
+    if (filters.trialStatus.length > 0 && !filters.trialStatus.includes(lead.trialStatus)) return false;
+
+    if (createdDateRange) {
+      const created = parseDateStr(lead.createdAt);
+      if (!created || created < createdDateRange.from || created > createdDateRange.to) return false;
+    }
+
+    if (convertedDateRange) {
+      const converted = parseDateStr(lead.convertedAt);
+      if (!converted || converted < convertedDateRange.from || converted > convertedDateRange.to) return false;
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      if (
+        !lead.fullName.toLowerCase().includes(search) &&
+        !lead.email.toLowerCase().includes(search) &&
+        !lead.phoneNumber.includes(search) &&
+        !lead.id.includes(search) &&
+        !lead.associate.toLowerCase().includes(search)
+      ) return false;
+    }
+
+    return true;
+  });
+}
+
 export function getLeadFieldValue(lead: Lead, key: GroupableLeadKey): string {
   return getLeadGroupLabel(lead, key);
 }
@@ -370,10 +528,54 @@ export function buildCountSummary(
     });
 }
 
+const STAGE_SUMMARY_GROUPS: Array<{ label: string; patterns: RegExp[] }> = [
+  { label: 'Membership Sold / Converted', patterns: [/membership\s*sold/i, /\bconverted\b/i, /\bsold\b/i] },
+  { label: 'Trial Scheduled', patterns: [/trial\s*scheduled/i, /trial\s*booked/i] },
+  { label: 'Trial Completed', patterns: [/trial\s*(completed|complete|done|finished)/i] },
+  { label: 'Trial Pending', patterns: [/trial/i] },
+  { label: 'No Response', patterns: [/no\s*response/i, /did\s*not\s*answer/i, /unresponsive/i] },
+  { label: 'Not Interested / Lost', patterns: [/not\s*interested/i, /\blost\b/i, /lead\s*dropped/i, /\bdropped\b/i, /\bdead\b/i, /cancel/i] },
+  { label: 'Invalid Contact', patterns: [/invalid\s*contact/i, /invalid\s*(number|no)/i] },
+];
+
+function getCanonicalStageSummaryLabel(stageName: string): string {
+  const cleaned = cleanLooseText(stageName) || 'Unassigned';
+  const group = STAGE_SUMMARY_GROUPS.find((item) => item.patterns.some((pattern) => pattern.test(cleaned)));
+  return group?.label ?? cleaned;
+}
+
+export function buildStageCountSummary(leads: Lead[]) {
+  const counts = new Map<string, { label: string; count: number; uniqueStages: Set<string> }>();
+
+  for (const lead of leads) {
+    const uniqueStage = cleanLooseText(lead.stageName) || 'Unassigned';
+    const label = getCanonicalStageSummaryLabel(uniqueStage);
+    const current = counts.get(label) ?? { label, count: 0, uniqueStages: new Set<string>() };
+    current.count += 1;
+    current.uniqueStages.add(uniqueStage);
+    counts.set(label, current);
+  }
+
+  const total = leads.length || 1;
+
+  return Array.from(counts.values())
+    .map((row) => ({
+      label: row.label,
+      count: row.count,
+      share: (row.count / total) * 100,
+      detail: Array.from(row.uniqueStages).sort((a, b) => a.localeCompare(b)).join(', '),
+      groupedCount: row.uniqueStages.size,
+    }))
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.label.localeCompare(b.label);
+    });
+}
+
 function buildGroupMetrics(leads: Lead[]) {
   const stageValue = (lead: Lead) => cleanLooseText(lead.stageName).toLowerCase();
 
-  const converted = leads.filter((lead) => /converted|membership sold|sold/.test(stageValue(lead))).length;
+  const converted = leads.filter(isSalesConvertedLead).length;
   const trialsCompleted = leads.filter((lead) => /trial completed|trial done|trial finished/.test(stageValue(lead))).length;
   const trialsScheduled = leads.filter((lead) => /trial scheduled/.test(stageValue(lead))).length;
   const disqualified = leads.filter((lead) => DISQUALIFIED_STAGE_VALUES.has(stageValue(lead))).length;

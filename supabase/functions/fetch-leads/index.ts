@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { combineColumnValueRanges, getRequiredSalesColumnRanges } from './sheet-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,11 +9,57 @@ const corsHeaders = {
 const SHEET_ID = '1dQMNF69WnXVQdhlLvUZTig3kL97NA21k6eZ9HRu6xiQ';
 const SHEET_NAME = '◉ Leads';
 const SHEET_RANGE = `${SHEET_NAME}!A:AG`;
+const SALES_SHEET_ID = '1HbGnJk-peffUp7XoXSlsL55924E9yUt8cP_h93cdTT0';
+const SALES_HEADER_RANGE = 'sales!1:1';
 const SHEET_CACHE_TTL_MS = 2 * 60 * 1000;
 const TOKEN_EXPIRY_BUFFER_MS = 60 * 1000;
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 let cachedSheetPayload: { data: unknown; expiresAt: number } | null = null;
+
+async function fetchSheetValues(accessToken: string, spreadsheetId: string, range: string) {
+  const encodedSheet = encodeURIComponent(range);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}`;
+
+  const response = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Sheets API error [${response.status}]: ${err}`);
+  }
+
+  return response.json();
+}
+
+async function batchFetchSheetValues(accessToken: string, spreadsheetId: string, ranges: string[]) {
+  const params = new URLSearchParams();
+  for (const range of ranges) {
+    params.append('ranges', range);
+  }
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${params.toString()}`;
+  const response = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Sheets API batchGet error [${response.status}]: ${err}`);
+  }
+
+  return response.json();
+}
+
+async function fetchSalesValues(accessToken: string) {
+  const headerData = await fetchSheetValues(accessToken, SALES_SHEET_ID, SALES_HEADER_RANGE);
+  const headers = headerData.values?.[0] ?? [];
+  const salesColumnRanges = getRequiredSalesColumnRanges(headers);
+  const salesColumnData = await batchFetchSheetValues(accessToken, SALES_SHEET_ID, salesColumnRanges);
+
+  return combineColumnValueRanges(salesColumnData.valueRanges ?? []);
+}
 
 async function getAccessToken(): Promise<string> {
   if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now()) {
@@ -71,19 +118,14 @@ Deno.serve(async (req) => {
 
     const accessToken = await getAccessToken();
     
-    const encodedSheet = encodeURIComponent(SHEET_RANGE);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodedSheet}`;
-    
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${accessToken}` },
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Sheets API error [${response.status}]: ${err}`);
-    }
-
-    const data = await response.json();
+    const [leadData, salesValues] = await Promise.all([
+      fetchSheetValues(accessToken, SHEET_ID, SHEET_RANGE),
+      fetchSalesValues(accessToken),
+    ]);
+    const data = {
+      ...leadData,
+      salesValues,
+    };
     cachedSheetPayload = {
       data,
       expiresAt: Date.now() + SHEET_CACHE_TTL_MS,

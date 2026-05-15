@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BarChart3, GitCompareArrows, Gauge, Goal, TrendingUp, Users } from 'lucide-react';
 import type { GroupableLeadKey, Lead } from '@/types/leads';
-import { GROUPABLE_COLUMNS, getLeadFieldValue } from '@/lib/lead-utils';
+import { GROUPABLE_COLUMNS, getLeadFieldValue, isSalesConvertedLead } from '@/lib/lead-utils';
 import { MultiSelectDropdown } from './MultiSelectDropdown';
 import { isOverdue } from '@/hooks/useLeadsData';
 
@@ -44,10 +44,10 @@ export function LeadComparison({ leads }: Props) {
     return effectiveAssociates.map((associate) => {
       const items = leads.filter((lead) => lead.associate === associate);
       const groups = new Map<string, number>();
-      const converted = items.filter(isConvertedLead).length;
+      const converted = items.filter(isSalesConvertedLead).length;
       const lost = items.filter(isLostLead).length;
       const trials = items.filter(isTrialLead).length;
-      const membershipsSold = items.filter((lead) => /membership sold|sold|converted/i.test(lead.stageName)).length;
+      const membershipsSold = converted;
 
       for (const lead of items) {
         const value = getLeadFieldValue(lead, groupKey) || '—';
@@ -266,10 +266,6 @@ export function LeadComparison({ leads }: Props) {
   );
 }
 
-function isConvertedLead(lead: Lead): boolean {
-  return /converted|member|membership sold|sold|retained/i.test(`${lead.conversionStatus} ${lead.stageName} ${lead.status}`);
-}
-
 function isLostLead(lead: Lead): boolean {
   return /lost|not interested|dead|dropped|cancel/i.test(`${lead.status} ${lead.stageName}`);
 }
@@ -296,9 +292,9 @@ function InsightCard({ icon: Icon, label, value, note }: { icon: typeof Users; l
 function Metric({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'green' | 'blue' | 'red' }) {
   const toneClass = {
     default: 'bg-background border-border/40 text-foreground',
-    green: 'bg-emerald-950/80 border-emerald-700/60 text-emerald-50',
-    blue: 'bg-blue-950/80 border-blue-700/60 text-blue-50',
-    red: 'bg-red-950/80 border-red-700/60 text-red-50',
+    green: 'bg-blue-600 border-blue-500 text-white',
+    blue: 'bg-blue-50 border-blue-100 text-blue-800',
+    red: 'bg-slate-100 border-slate-200 text-slate-700',
   }[tone];
 
   return (

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Lead, FollowUp } from '@/types/leads';
 import {
   cleanLooseText,
+  enrichLeadsWithSalesConversions,
   formatStudioName,
   formatMomenceDate,
   normalizeCenterName,
@@ -10,7 +11,7 @@ import {
   splitFullName,
 } from '@/lib/lead-utils';
 
-const LEADS_CACHE_KEY = 'lead-compass:leads:v1';
+const LEADS_CACHE_KEY = 'lead-compass:leads:v4';
 const LEADS_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 
 interface LeadsCacheEntry {
@@ -125,15 +126,17 @@ async function fetchLeads(): Promise<Lead[]> {
   if (error) throw error;
   
   const rows: string[][] = data.values || [];
+  const salesRows: string[][] = data.salesValues || [];
   // Skip header row
   if (rows.length <= 1) return [];
   const leads = rows
     .slice(1)
     .filter((row) => isValidLeadName(row[1] || ''))
     .map(parseRow);
+  const enrichedLeads = enrichLeadsWithSalesConversions(leads, salesRows);
 
-  writeCachedLeads(leads);
-  return leads;
+  writeCachedLeads(enrichedLeads);
+  return enrichedLeads;
 }
 
 export function useLeadsData() {

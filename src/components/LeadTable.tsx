@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   buildCountSummary,
+  buildStageCountSummary,
   cleanLooseText,
   GROUPABLE_COLUMNS,
   flattenGroupedLeads,
@@ -26,6 +27,7 @@ import { defaultFilters } from '@/types/leads';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { buildMomencePayload, useUpdateLead } from '@/hooks/useLeadsData';
 import { toast } from '@/components/ui/sonner';
+import { DatePickerField } from './DatePickerField';
 
 interface Props {
   leads: Lead[];
@@ -81,13 +83,15 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [groupKeys, setGroupKeys] = useState<GroupableLeadKey[]>(['associate']);
+  const [groupKeys, setGroupKeys] = useState<GroupableLeadKey[]>([]);
   const [groupToAdd, setGroupToAdd] = useState<GroupableLeadKey | ''>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<string[]>([]);
   const [isStageSummaryCollapsed, setIsStageSummaryCollapsed] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => (
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false
+  ));
   const [isSidebarPinned, setIsSidebarPinned] = useState(false);
   const [isSidebarInteracting, setIsSidebarInteracting] = useState(false);
   const [isQuickFiltersOpen, setIsQuickFiltersOpen] = useState(false);
@@ -136,14 +140,16 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
     () => pagedRows.filter((row): row is LeadRenderDataRow => row.type === 'lead').map((row) => row.lead),
     [pagedRows],
   );
-  const displayedStageSummary = useMemo(() => buildCountSummary(displayedLeads, 'stageName'), [displayedLeads]);
-  const displayedSourceSummary = useMemo(() => buildCountSummary(displayedLeads, 'sourceName'), [displayedLeads]);
+  const displayedStageSummary = useMemo(() => buildStageCountSummary(sorted), [sorted]);
+  const displayedSourceSummary = useMemo(() => buildCountSummary(sorted, 'sourceName'), [sorted]);
   const activeFilterCount = useMemo(() => {
     if (!filters) return 0;
 
     return Object.entries(filters).filter(([key, value]) => {
       if (key === 'search') return Boolean(value);
       if (key === 'datePreset') return value !== 'all';
+      if (key === 'convertedDatePreset') return value !== 'all';
+      if (key === 'customDateFrom' || key === 'customDateTo' || key === 'convertedDateFrom' || key === 'convertedDateTo') return false;
       if (Array.isArray(value)) return value.length > 0;
       return value !== 'all';
     }).length;
@@ -256,7 +262,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
 
   const availableGroupColumns = GROUPABLE_COLUMNS.filter(({ key }) => !groupKeys.includes(key));
   const rowHeightClass = 'h-10 max-h-10';
-  const summaryRowsToShow = isStageSummaryCollapsed ? 5 : Math.max(displayedStageSummary.length, displayedSourceSummary.length);
+  const summaryRowsToShow = isStageSummaryCollapsed ? 8 : Math.max(displayedStageSummary.length, displayedSourceSummary.length);
   const sidebarStatCards = [
     { label: 'Visible', value: String(visibleRows.length) },
     { label: 'Page', value: `${page}/${totalPages}` },
@@ -312,7 +318,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
 
   return (
     <>
-      <div className="glass-strong mt-2 flex h-[calc(100%-0.5rem)] w-full min-h-0 overflow-hidden rounded-[28px] shadow-elevated">
+      <div className="premium-panel mx-3 mt-3 flex h-[calc(100%-1.5rem)] w-[calc(100%-1.5rem)] min-h-0 overflow-hidden rounded-[22px]">
         <aside
           ref={sidebarRef}
           onMouseEnter={() => setIsSidebarInteracting(true)}
@@ -323,16 +329,17 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               setIsSidebarInteracting(false);
             }
           }}
-          className={`flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800/70 bg-[linear-gradient(180deg,rgba(10,14,24,0.98),rgba(15,23,42,0.96))] text-slate-100 transition-[width] duration-300 ${isSidebarCollapsed ? 'w-[64px]' : 'w-[344px]'}`}
+          className={`flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border/75 bg-card/95 text-card-foreground shadow-[inset_-1px_0_0_rgba(37,99,235,0.08)] transition-[width] duration-300 dark:bg-card/80 dark:shadow-[inset_-1px_0_0_rgba(125,211,252,0.12)] ${isSidebarCollapsed ? 'w-[64px]' : 'w-[360px]'}`}
         >
-          <div className={`flex h-12 items-center border-b border-white/8 ${isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'}`}>
+          <div className={`flex h-14 items-center border-b border-border/75 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-900 dark:to-blue-950/70 ${isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'}`}>
             {!isSidebarCollapsed ? (
               <div>
-                <p className="text-sm font-semibold text-white">Workspace sidebar</p>
+                <p className="text-sm font-semibold text-foreground">Command panel</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Filters · Groups · Counts</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-slate-200" />
+              <div className="rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
               </div>
             )}
             <Button
@@ -340,7 +347,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               variant="ghost"
               size="sm"
               onClick={() => setIsSidebarCollapsed((current) => !current)}
-              className={`rounded-xl p-0 text-slate-200 hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'absolute right-2 top-3 h-8 w-8' : 'h-9 w-9'}`}
+              className={`rounded-xl p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary ${isSidebarCollapsed ? 'absolute right-2 top-3 h-8 w-8' : 'h-9 w-9'}`}
             >
               {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
@@ -350,7 +357,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSidebarPinned((current) => !current)}
-                className="h-9 w-9 rounded-xl p-0 text-slate-300 hover:bg-white/8 hover:text-white"
+                className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
               >
                 {isSidebarPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
               </Button>
@@ -363,18 +370,18 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               <CollapsedRailButton icon={Layers3} label="Groups" value={String(groupKeys.length)} onClick={() => setIsSidebarCollapsed(false)} />
               <CollapsedRailButton icon={Sparkles} label="Rows" value={String(sorted.length)} onClick={() => setIsSidebarCollapsed(false)} />
               <CollapsedRailButton icon={CalendarRange} label="Page" value={`${page}`} onClick={() => setIsSidebarCollapsed(false)} />
-              <div className="mt-auto flex h-16 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] px-1 text-[8px] font-semibold uppercase tracking-[0.24em] text-slate-600 [writing-mode:vertical-rl] rotate-180">
+              <div className="mt-auto flex h-16 items-center justify-center overflow-hidden rounded-full border border-primary/20 bg-primary/10 px-1 text-[8px] font-semibold uppercase tracking-[0.24em] text-primary [writing-mode:vertical-rl] rotate-180">
                 Rail
               </div>
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-4">
-                <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5">
+                <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">Overview</p>
-                      <p className="mt-1 text-[11px] text-slate-400">A quick pulse of the visible workspace.</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">Overview</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">A quick pulse of the visible workspace.</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
@@ -384,12 +391,34 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                   </div>
                 </section>
 
+                <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Counts</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">For the full filtered result set.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-xl px-2 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
+                      onClick={() => setIsStageSummaryCollapsed((current) => !current)}
+                    >
+                      {isStageSummaryCollapsed ? 'More' : 'Less'}
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    <SummaryCountTable title="Stages" rows={displayedStageSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
+                    <SummaryCountTable title="Sources" rows={displayedSourceSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
+                  </div>
+                </section>
+
                 {filters && onFiltersChange && (
-                  <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5">
+                  <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="h-4 w-4 text-slate-300" />
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Filters</p>
+                        <SlidersHorizontal className="h-4 w-4 text-primary" />
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Filters</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {activeFilterCount > 0 && (
@@ -398,7 +427,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             variant="ghost"
                             size="sm"
                             onClick={() => onFiltersChange(defaultFilters)}
-                            className="h-8 rounded-xl px-2 text-[11px] text-slate-200 hover:bg-white/8 hover:text-white"
+                            className="h-8 rounded-xl px-2 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
                           >
                             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
                           </Button>
@@ -407,39 +436,64 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                     </div>
                     <div className="space-y-3">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Search</label>
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Search</label>
                         <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
                             value={filters.search}
                             onChange={(event) => onFiltersChange({ ...filters, search: event.target.value })}
                             placeholder="Name, phone, email, ID"
-                            className="h-10 rounded-xl border-white/10 bg-slate-950/70 pl-10 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="h-10 rounded-xl border-border/70 bg-background/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground"
                           />
                         </div>
                       </div>
 
                       <SidebarSelect
-                        label="Period"
+                        label="Lead created"
                         value={filters.datePreset}
                         onChange={(value) => onFiltersChange({ ...filters, datePreset: value as DatePreset })}
                         options={DATE_PRESET_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
                       />
                       {filters.datePreset === 'custom' && (
-                        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/8 bg-slate-950/55 p-3">
-                          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                            <CalendarRange className="h-3.5 w-3.5 text-slate-300" /> Custom range
+                        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-primary/5 p-3">
+                          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            <CalendarRange className="h-3.5 w-3.5 text-primary" /> Custom range
                           </div>
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <FormDateInput
+                            <DatePickerField
                               label="From"
                               value={filters.customDateFrom}
                               onChange={(value) => onFiltersChange({ ...filters, customDateFrom: value })}
                             />
-                            <FormDateInput
+                            <DatePickerField
                               label="To"
                               value={filters.customDateTo}
                               onChange={(value) => onFiltersChange({ ...filters, customDateTo: value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <SidebarSelect
+                        label="Converted"
+                        value={filters.convertedDatePreset}
+                        onChange={(value) => onFiltersChange({ ...filters, convertedDatePreset: value as DatePreset })}
+                        options={DATE_PRESET_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
+                      />
+                      {filters.convertedDatePreset === 'custom' && (
+                        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-primary/5 p-3">
+                          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            <CalendarRange className="h-3.5 w-3.5 text-primary" /> Converted range
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <DatePickerField
+                              label="From"
+                              value={filters.convertedDateFrom}
+                              onChange={(value) => onFiltersChange({ ...filters, convertedDateFrom: value })}
+                            />
+                            <DatePickerField
+                              label="To"
+                              value={filters.convertedDateTo}
+                              onChange={(value) => onFiltersChange({ ...filters, convertedDateTo: value })}
                             />
                           </div>
                         </div>
@@ -466,16 +520,16 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                   </section>
                 )}
 
-                <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5">
+                  <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <Layers3 className="h-4 w-4 text-slate-300" />
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Grouping</p>
+                      <Layers3 className="h-4 w-4 text-primary" />
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Grouping</p>
                     </div>
                     <select
                       value={pageSize}
                       onChange={(event) => setPageSize(Number(event.target.value))}
-                      className="h-7 rounded-lg border border-white/10 bg-slate-950/70 px-2 text-[10px] font-medium text-slate-100"
+                      className="h-7 rounded-lg border border-border/70 bg-background/80 px-2 text-[10px] font-medium text-foreground"
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <option key={size} value={size}>{size}/page</option>
@@ -490,16 +544,16 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                       options={[{ label: 'Select grouping', value: '' }, ...availableGroupColumns.map((column) => ({ label: column.label, value: column.key }))]}
                     />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" onClick={addGroup} disabled={!groupToAdd} className="rounded-xl bg-slate-100 text-slate-950 hover:bg-white">Add</Button>
+                      <Button type="button" onClick={addGroup} disabled={!groupToAdd} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Add</Button>
                       {groupKeys.length > 0 && (
-                        <Button type="button" variant="outline" onClick={() => setGroupKeys([])} className="rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">Clear</Button>
+                        <Button type="button" variant="outline" onClick={() => setGroupKeys([])} className="rounded-xl border-border/70 bg-background/70 text-foreground hover:bg-primary/10">Clear</Button>
                       )}
                       {groupRows.length > 0 && (
                         <>
-                          <Button type="button" variant="outline" onClick={expandAllGroups} className="rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">
+                          <Button type="button" variant="outline" onClick={expandAllGroups} className="rounded-xl border-border/70 bg-background/70 text-foreground hover:bg-primary/10">
                             <ChevronsDownUp className="mr-1.5 h-4 w-4" /> Expand
                           </Button>
-                          <Button type="button" variant="outline" onClick={collapseAllGroups} className="rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]">
+                          <Button type="button" variant="outline" onClick={collapseAllGroups} className="rounded-xl border-border/70 bg-background/70 text-foreground hover:bg-primary/10">
                             <ChevronsUpDown className="mr-1.5 h-4 w-4" /> Collapse
                           </Button>
                         </>
@@ -512,7 +566,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             key={key}
                             type="button"
                             onClick={() => setGroupKeys((current) => current.filter((item) => item !== key))}
-                            className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-slate-200"
+                            className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary"
                           >
                             {GROUPABLE_COLUMNS.find((column) => column.key === key)?.label} ×
                           </button>
@@ -522,34 +576,13 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                   </div>
                 </section>
 
-                <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-3.5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Counts</p>
-                      <p className="mt-1 text-[11px] text-slate-400">For visible rows on the current page.</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 rounded-xl px-2 text-[11px] text-slate-200 hover:bg-white/[0.08] hover:text-white"
-                      onClick={() => setIsStageSummaryCollapsed((current) => !current)}
-                    >
-                      {isStageSummaryCollapsed ? 'More' : 'Less'}
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    <SummaryCountTable title="Stages" rows={displayedStageSummary} rowLimit={summaryRowsToShow} dark />
-                    <SummaryCountTable title="Sources" rows={displayedSourceSummary} rowLimit={summaryRowsToShow} dark />
-                  </div>
-                </section>
               </div>
             </div>
           )}
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/35">
-          <div className="min-h-0 flex-1 overflow-auto">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/80 dark:bg-slate-950/30">
+          <div className="min-h-0 flex-1 overflow-auto lead-scroll-area">
           <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${columnWidths.reduce((sum, width) => sum + width, 0)}px` }}>
             <colgroup>
               {columnWidths.map((width, index) => (
@@ -563,7 +596,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                     key={column.key}
                     onClick={column.sortKey ? () => toggleSort(column.sortKey!) : undefined}
                     style={{ width: `${columnWidths[index]}px`, minWidth: `${columnWidths[index]}px` }}
-                    className={`group/column relative h-12 px-4 text-left text-[10px] uppercase tracking-widest font-semibold text-muted-foreground whitespace-nowrap ${column.sortKey ? 'cursor-pointer select-none transition-colors' : ''}`}
+                    className={`group/column relative h-12 px-4 text-left text-[10px] uppercase tracking-widest font-semibold text-white/90 whitespace-nowrap ${column.sortKey ? 'cursor-pointer select-none transition-colors hover:text-white' : ''}`}
                   >
                     <span className="inline-flex items-center gap-1 pr-4">
                       {column.label} {column.sortKey ? <SortIcon col={column.sortKey} /> : null}
@@ -574,7 +607,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                         aria-orientation="vertical"
                         aria-label={`Resize ${column.label} column`}
                         onMouseDown={(event) => startColumnResize(index, event)}
-                        className="absolute right-0 top-1/2 h-6 w-2 -translate-y-1/2 cursor-col-resize rounded-full bg-transparent transition-colors before:absolute before:left-1/2 before:top-0 before:h-full before:w-px before:-translate-x-1/2 before:bg-white/18 hover:bg-white/8 hover:before:bg-sky-300"
+                        className="absolute right-0 top-1/2 h-6 w-2 -translate-y-1/2 cursor-col-resize rounded-full bg-transparent transition-colors before:absolute before:left-1/2 before:top-0 before:h-full before:w-px before:-translate-x-1/2 before:bg-white/20 hover:bg-white/10 hover:before:bg-sky-300"
                       />
                     )}
                   </th>
@@ -586,11 +619,11 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                 if (row.type === 'group') {
                   const collapsed = collapsedGroupIds.includes(row.id);
                   return (
-                    <tr key={row.id} className="h-11 cursor-pointer bg-slate-950/[0.95] text-slate-50 hover:bg-slate-900">
-                      <td className="border-b border-slate-800 px-4 py-2 align-middle text-xs font-mono text-slate-300 whitespace-nowrap">{row.groupNumber}</td>
-                      <td colSpan={10} className="border-b border-slate-800 px-4 py-2 align-middle" onClick={() => toggleGroup(row.id)}>
+                    <tr key={row.id} className="h-11 cursor-pointer bg-blue-700 text-blue-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-blue-600 dark:bg-blue-950 dark:hover:bg-blue-900">
+                      <td className="border-b border-blue-600/70 px-4 py-2 align-middle text-xs font-mono text-blue-100 whitespace-nowrap">{row.groupNumber}</td>
+                      <td colSpan={10} className="border-b border-blue-600/70 px-4 py-2 align-middle dark:border-blue-900" onClick={() => toggleGroup(row.id)}>
                         <div className="flex items-center gap-3" style={{ paddingLeft: `${row.depth * 18}px` }}>
-                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200/90 shrink-0">
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-50/95 shrink-0">
                             {collapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             {GROUPABLE_COLUMNS.find((column) => column.key === row.groupKey)?.label}: {row.label}
                           </span>
@@ -622,7 +655,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
           </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-border/30 px-5 py-2.5">
+          <div className="flex items-center justify-between border-t border-border/75 bg-card/90 px-5 py-2.5 shadow-[0_-16px_40px_-34px_rgba(15,23,42,0.8)] dark:bg-card/80">
           <p className="text-[11px] text-muted-foreground">Showing <span className="font-mono-data font-semibold text-foreground">{pagedRows.length}</span> rows on this page.</p>
           <div className="flex items-center gap-1.5">
             <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg px-2.5 text-[11px]" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
@@ -648,7 +681,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
       {filters && onFiltersChange && (
         <div className="pointer-events-none fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 md:bottom-8 md:right-8">
           {isQuickFiltersOpen && (
-            <div className="pointer-events-auto w-[min(420px,calc(100vw-1.5rem))] rounded-[28px] border border-border/40 bg-background/88 p-4 shadow-elevated backdrop-blur-2xl">
+            <div className="pointer-events-auto w-[min(420px,calc(100vw-1.5rem))] rounded-[28px] border border-border/40 bg-background/90 p-4 shadow-elevated backdrop-blur-2xl">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Quick filters</p>
@@ -662,10 +695,17 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               <div className="space-y-3">
                 <QuickFilterRow
                   icon={CalendarRange}
-                  label="Period"
+                  label="Created"
                   options={QUICK_PERIOD_OPTIONS}
                   activeValue={filters.datePreset}
                   onSelect={(value) => onFiltersChange({ ...filters, datePreset: value as DatePreset })}
+                />
+                <QuickFilterRow
+                  icon={CalendarRange}
+                  label="Converted"
+                  options={QUICK_PERIOD_OPTIONS}
+                  activeValue={filters.convertedDatePreset}
+                  onSelect={(value) => onFiltersChange({ ...filters, convertedDatePreset: value as DatePreset })}
                 />
                 <QuickFilterRow
                   icon={MapPin}
@@ -689,7 +729,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
             type="button"
             size="sm"
             onClick={() => setIsQuickFiltersOpen((current) => !current)}
-            className="pointer-events-auto h-12 rounded-full bg-slate-950 px-4 text-white shadow-[0_18px_40px_-18px_rgba(15,23,42,0.8)] hover:bg-slate-900"
+            className="pointer-events-auto h-12 rounded-full bg-[linear-gradient(135deg,#1d4ed8,#0ea5e9)] px-4 text-white shadow-[0_18px_40px_-18px_rgba(37,99,235,0.85)] hover:brightness-105"
           >
             <SlidersHorizontal className="mr-2 h-4 w-4" /> Quick filters
           </Button>
@@ -785,7 +825,7 @@ function LeadDataRow({
   return (
     <tr
       onClick={() => onSelect(lead)}
-      className={`group cursor-pointer border-b border-border/20 bg-white/75 transition-colors duration-150 odd:bg-background/88 even:bg-slate-50/78 hover:bg-slate-100 ${rowHeightClass}`}
+      className={`group cursor-pointer border-b border-border/60 bg-card transition-colors duration-150 odd:bg-card even:bg-muted/40 hover:bg-primary/10 dark:odd:bg-slate-950/30 dark:even:bg-slate-900/30 dark:hover:bg-blue-950/30 ${rowHeightClass}`}
     >
       <td className="px-4 py-2 align-middle text-xs font-mono text-muted-foreground whitespace-nowrap">{row.rowNumber}</td>
       <td className="px-4 py-2 align-middle">
@@ -795,22 +835,22 @@ function LeadDataRow({
               <div className="truncate text-sm font-semibold leading-tight text-foreground">{lead.fullName}</div>
             </div>
           </HoverCardTrigger>
-          <HoverCardContent side="right" align="start" sideOffset={12} collisionPadding={20} className="z-[120] w-[min(980px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-visible rounded-[28px] border border-slate-700/70 bg-slate-950/98 p-0 shadow-[0_32px_90px_-32px_rgba(2,6,23,0.95)]">
+          <HoverCardContent side="right" align="start" sideOffset={12} collisionPadding={20} className="z-[120] w-[min(980px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-visible rounded-[24px] border border-border/70 bg-popover p-0 shadow-[0_32px_90px_-40px_rgba(37,99,235,0.45)]">
             <LeadHoverInfo lead={lead} />
           </HoverCardContent>
         </HoverCard>
       </td>
       <td className="px-4 py-2 align-middle">
-        <span className="block truncate text-xs font-mono-data text-foreground whitespace-nowrap">{`${lead.createdAt || '—'} · ${dateLabel}`}</span>
+        <span className="block truncate text-xs font-mono-data text-muted-foreground whitespace-nowrap">{`${lead.createdAt || '—'} · ${dateLabel}`}</span>
       </td>
       <td className="px-4 py-2 align-middle">
-        <span className="block truncate text-xs font-medium text-foreground whitespace-nowrap">{lead.associate || '—'}</span>
+        <span className="block truncate text-xs font-medium text-foreground/78 whitespace-nowrap">{lead.associate || '—'}</span>
       </td>
       <td className="px-4 py-2 align-middle">
-        <span className="block truncate text-xs font-semibold text-foreground">{sourcePreview}</span>
+        <span className="block truncate text-xs font-semibold text-foreground/90">{sourcePreview}</span>
       </td>
       <td className="px-4 py-2 align-middle">
-        <span className="block truncate text-xs font-semibold text-foreground">{stagePreview}</span>
+        <span className="block truncate rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{stagePreview}</span>
       </td>
       <td className="px-4 py-2 align-middle">
         <Tooltip>
@@ -846,40 +886,64 @@ function SummaryCountTable({
   title,
   rows,
   rowLimit,
+  totalCount,
   dark = false,
 }: {
   title: string;
-  rows: Array<{ label: string; count: number; share: number }>;
+  rows: Array<{ label: string; count: number; share: number; detail?: string; groupedCount?: number }>;
   rowLimit: number;
+  totalCount: number;
   dark?: boolean;
 }) {
   const visibleRows = rows.slice(0, rowLimit);
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${dark ? 'border-white/10 bg-slate-900/70' : 'border-border/30 bg-background/70'}`}>
-      <div className={`border-b px-3 py-2 ${dark ? 'border-white/10' : 'border-border/20'}`}>
-        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${dark ? 'text-slate-300' : 'text-muted-foreground'}`}>{title}</h4>
+    <div className={`overflow-hidden rounded-2xl border ${dark ? 'border-border/60 bg-background/70 shadow-sm' : 'border-border/30 bg-background/70'}`}>
+      <div className={`flex items-center justify-between border-b px-3 py-2 ${dark ? 'border-border/50 bg-primary/5' : 'border-border/20'}`}>
+        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${dark ? 'text-foreground' : 'text-muted-foreground'}`}>{title}</h4>
+        <span className={`rounded-full px-2 py-0.5 font-mono-data text-[10px] font-semibold ${dark ? 'bg-primary/10 text-primary ring-1 ring-primary/20' : 'bg-muted text-foreground'}`}>
+          {rows.length} rows
+        </span>
       </div>
-      <table className="min-w-full text-sm">
-        <thead className={dark ? 'bg-white/5' : 'bg-muted/25'}>
+      <table className="w-full table-fixed text-sm">
+        <colgroup>
+          <col className="w-[64%]" />
+          <col className="w-[17%]" />
+          <col className="w-[19%]" />
+        </colgroup>
+        <thead className={dark ? 'bg-muted/50' : 'bg-muted/25'}>
           <tr>
-            <th className={`px-3 py-2 text-left text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-slate-400' : 'text-muted-foreground'}`}>Label</th>
-            <th className={`px-3 py-2 text-right text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-slate-400' : 'text-muted-foreground'}`}>Count</th>
-            <th className={`px-3 py-2 text-right text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-slate-400' : 'text-muted-foreground'}`}>Share</th>
+            <th className={`px-3 py-2 text-left text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Label</th>
+            <th className={`px-2 py-2 text-right text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Count</th>
+            <th className={`px-2 py-2 text-right text-[10px] uppercase tracking-wider font-semibold ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Share</th>
           </tr>
         </thead>
         <tbody>
           {visibleRows.length > 0 ? visibleRows.map((row) => (
-            <tr key={row.label} className={`border-t ${dark ? 'border-white/10' : 'border-border/20'}`}>
-              <td className={`px-3 py-2 text-xs ${dark ? 'text-slate-100' : 'text-foreground'}`}>{row.label}</td>
-              <td className={`px-3 py-2 text-right text-xs font-semibold ${dark ? 'text-white' : 'text-foreground'}`}>{row.count}</td>
-              <td className={`px-3 py-2 text-right text-xs ${dark ? 'text-slate-400' : 'text-muted-foreground'}`}>{row.share.toFixed(1)}%</td>
+            <tr key={row.label} className={`border-t ${dark ? 'border-border/50' : 'border-border/20'}`}>
+              <td className={`px-3 py-2 text-xs ${dark ? 'text-foreground' : 'text-foreground'}`}>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{row.label}</p>
+                  {row.groupedCount && row.groupedCount > 1 && (
+                    <p className={`mt-0.5 truncate text-[10px] ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`} title={row.detail}>
+                      {row.groupedCount} stages grouped
+                    </p>
+                  )}
+                </div>
+              </td>
+              <td className={`px-2 py-2 text-right text-xs font-semibold ${dark ? 'text-foreground' : 'text-foreground'}`}>{row.count}</td>
+              <td className={`px-2 py-2 text-right text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{row.share.toFixed(1)}%</td>
             </tr>
           )) : (
             <tr>
-              <td colSpan={3} className={`px-3 py-4 text-center text-xs ${dark ? 'text-slate-400' : 'text-muted-foreground'}`}>No rows on this page yet.</td>
+              <td colSpan={3} className={`px-3 py-4 text-center text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>No rows match the current filters.</td>
             </tr>
           )}
+          <tr className={`border-t ${dark ? 'border-primary/20 bg-primary/10' : 'border-border/30 bg-muted/40'}`}>
+            <td className={`px-3 py-2 text-xs font-semibold ${dark ? 'text-foreground' : 'text-foreground'}`}>Total</td>
+            <td className={`px-2 py-2 text-right font-mono-data text-xs font-bold ${dark ? 'text-foreground' : 'text-foreground'}`}>{totalCount}</td>
+            <td className={`px-2 py-2 text-right text-xs font-semibold ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{totalCount > 0 ? '100.0%' : '0.0%'}</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -888,9 +952,9 @@ function SummaryCountTable({
 
 function SidebarStatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2.5 shadow-sm">
-      <p className="truncate text-[9px] uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <p className="mt-1 truncate font-mono-data text-base font-semibold text-white">{value}</p>
+    <div className="min-w-0 rounded-2xl border border-primary/20 bg-gradient-to-br from-card to-primary/10 px-3 py-2.5 shadow-sm">
+      <p className="truncate text-[9px] uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate font-mono-data text-base font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -910,12 +974,12 @@ function CollapsedRailButton({
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-sky-300/40 hover:bg-white/[0.08] hover:text-white"
+      className="group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-primary/20 bg-card text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
       aria-label={value ? `${label}: ${value}` : label}
       title={value ? `${label}: ${value}` : label}
     >
-      <Icon className="h-3.5 w-3.5 text-sky-300 transition-transform group-hover:scale-105" />
-      {value && <span className="mt-1 font-mono-data text-[9px] font-semibold leading-none text-slate-200">{value}</span>}
+      <Icon className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-105" />
+      {value && <span className="mt-1 font-mono-data text-[9px] font-semibold leading-none text-foreground">{value}</span>}
     </button>
   );
 }
@@ -936,7 +1000,7 @@ function QuickFilterRow({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <div className="rounded-xl bg-primary/8 p-1.5 text-primary">
+        <div className="rounded-xl bg-primary/10 p-1.5 text-primary">
           <Icon className="h-3.5 w-3.5" />
         </div>
         <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">{label}</span>
@@ -950,8 +1014,8 @@ function QuickFilterRow({
               type="button"
               onClick={() => onSelect(option.value)}
               className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${active
-                ? 'border-blue-700 bg-blue-900 text-white shadow-sm'
-                : 'border-border/50 bg-background/85 text-muted-foreground hover:border-sky-200/60 hover:text-foreground'}`}
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'border-border/50 bg-background/80 text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'}`}
             >
               {option.label}
             </button>
@@ -972,25 +1036,11 @@ function GroupMetricPill({
   value: number;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-slate-100">
-      <Icon className="h-3 w-3 text-slate-300" />
-      <span className="text-slate-300">{label}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium text-blue-50 backdrop-blur">
+      <Icon className="h-3 w-3 text-blue-100" />
+      <span className="text-blue-100/80">{label}</span>
       <span className="font-mono-data text-white">{value}</span>
     </span>
-  );
-}
-
-function FormDateInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="space-y-1.5">
-      <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <Input
-        type="date"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-xl border-border/40 bg-background/80 px-3 text-sm text-foreground"
-      />
-    </label>
   );
 }
 
@@ -1007,11 +1057,11 @@ function SidebarSelect({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 text-sm text-slate-100"
+        className="h-10 w-full rounded-xl border border-border/70 bg-background/80 px-3 text-sm text-foreground"
       >
         {options.map((option) => (
           <option key={`${label}-${option.value}`} value={option.value}>{option.label}</option>
@@ -1034,14 +1084,14 @@ function SidebarMultiSelect({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <MultiSelectDropdown
         label={label}
         options={options}
         selected={selected}
         onChange={onChange}
         allLabel="All"
-        buttonClassName="h-10 w-full justify-between rounded-xl border border-white/10 bg-slate-900/80 px-3 text-sm font-normal text-slate-100"
+        buttonClassName="h-10 w-full justify-between rounded-xl border border-border/70 bg-background/80 px-3 text-sm font-normal text-foreground"
       />
     </div>
   );

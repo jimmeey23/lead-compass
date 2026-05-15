@@ -6,6 +6,7 @@ import { defaultFilters } from '@/types/leads';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MultiSelectDropdown } from './MultiSelectDropdown';
+import { DatePickerField } from './DatePickerField';
 
 interface Props {
   filters: FilterState;
@@ -27,6 +28,7 @@ const datePresets: { key: DatePreset; label: string }[] = [
   { key: 'lastMonth', label: 'Last Month' },
   { key: 'thisQuarter', label: 'This Quarter' },
   { key: 'lastQuarter', label: 'Last Quarter' },
+  { key: 'custom', label: 'Custom' },
 ];
 
 export function LeadFilters({ filters, onChange, leads }: Props) {
@@ -36,11 +38,17 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
   const activeCount = Object.entries(filters).filter(([k, v]) => {
     if (k === 'search') return !!v;
     if (k === 'datePreset') return v !== 'all';
+    if (k === 'convertedDatePreset') return v !== 'all';
+    if (k === 'customDateFrom' || k === 'customDateTo' || k === 'convertedDateFrom' || k === 'convertedDateTo') return false;
     if (Array.isArray(v)) return v.length > 0;
     return v !== 'all';
   }).length;
 
   const update = (key: keyof FilterState, value: string | string[]) => {
+    onChange({ ...filters, [key]: value });
+  };
+
+  const updateDatePreset = (key: 'datePreset' | 'convertedDatePreset', value: DatePreset) => {
     onChange({ ...filters, [key]: value });
   };
 
@@ -56,23 +64,23 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
   const trialStatuses = getUnique(leads, 'trialStatus');
 
   return (
-    <div className="glass-strong rounded-2xl shadow-glass overflow-hidden">
+    <div className="glass-strong overflow-hidden rounded-[22px] shadow-glass">
       {/* Search Row */}
-      <div className="flex items-center gap-3 p-4">
+      <div className="flex items-center gap-3 border-b border-border/70 bg-card/70 p-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search leads by name, email, phone, or ID..."
             value={filters.search}
             onChange={(e) => update('search', e.target.value)}
-            className="pl-10 h-10 text-sm border-border/50 bg-background/50 rounded-xl focus:ring-2 focus:ring-primary/20"
+            className="h-10 rounded-xl border-border/70 bg-background/80 pl-10 text-sm focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setQuickExpanded(!quickExpanded)}
-          className="h-10 px-4 rounded-xl gap-2 text-sm border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all"
+          className="h-10 gap-2 rounded-xl border-border/70 bg-background/70 px-4 text-sm transition-all hover:border-primary/30 hover:bg-primary/10"
         >
           <Calendar className="h-4 w-4" />
           Quick Filters
@@ -82,14 +90,14 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
           variant="outline"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="h-10 px-4 rounded-xl gap-2 text-sm border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all"
+          className="h-10 gap-2 rounded-xl border-border/70 bg-background/70 px-4 text-sm transition-all hover:border-primary/30 hover:bg-primary/10"
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filters
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </Button>
         {activeCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={reset} className="h-10 text-sm gap-1.5 text-accent-overdue hover:text-accent-overdue hover:bg-accent-overdue/10 rounded-xl">
+          <Button variant="ghost" size="sm" onClick={reset} className="h-10 gap-1.5 rounded-xl text-sm text-accent-overdue hover:bg-accent-overdue/10 hover:text-accent-overdue">
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
         )}
@@ -107,22 +115,29 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
           >
             <div className="px-4 pb-3 space-y-3">
               {/* Date Presets */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                {datePresets.map(p => (
-                  <button
-                    key={p.key}
-                    onClick={() => update('datePreset', p.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      filters.datePreset === p.key
-                        ? 'gradient-primary text-primary-foreground shadow-sm'
-                        : 'bg-background/60 text-muted-foreground hover:bg-primary/5 hover:text-foreground border border-border/40'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
+              <DatePresetGroup
+                label="Created"
+                value={filters.datePreset}
+                onChange={(value) => updateDatePreset('datePreset', value)}
+              />
+              {filters.datePreset === 'custom' && (
+                <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-3 sm:grid-cols-2">
+                  <DatePickerField label="Created from" value={filters.customDateFrom} onChange={(value) => update('customDateFrom', value)} />
+                  <DatePickerField label="Created to" value={filters.customDateTo} onChange={(value) => update('customDateTo', value)} />
+                </div>
+              )}
+
+              <DatePresetGroup
+                label="Converted"
+                value={filters.convertedDatePreset}
+                onChange={(value) => updateDatePreset('convertedDatePreset', value)}
+              />
+              {filters.convertedDatePreset === 'custom' && (
+                <div className="grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-3 sm:grid-cols-2">
+                  <DatePickerField label="Converted from" value={filters.convertedDateFrom} onChange={(value) => update('convertedDateFrom', value)} />
+                  <DatePickerField label="Converted to" value={filters.convertedDateTo} onChange={(value) => update('convertedDateTo', value)} />
+                </div>
+              )}
 
               {/* Location Quick Chips */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -217,6 +232,32 @@ function FilterMultiSelect({ label, value, options, onChange }: { label: string;
         allLabel="All"
         buttonClassName="h-10 w-full justify-between rounded-xl border-border/40 bg-background/70 px-3 text-sm font-normal text-foreground"
       />
+    </div>
+  );
+}
+
+function DatePresetGroup({ label, value, onChange }: { label: string; value: DatePreset; onChange: (value: DatePreset) => void }) {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-background/50 p-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <Calendar className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {datePresets.map((preset) => (
+          <button
+            key={`${label}-${preset.key}`}
+            onClick={() => onChange(preset.key)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              value === preset.key
+                ? 'gradient-primary text-primary-foreground shadow-sm'
+                : 'border border-border/40 bg-background/70 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

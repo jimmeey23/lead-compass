@@ -25,18 +25,18 @@ function getStatusMeta(status: string): { icon: LucideIcon; className: string } 
   const value = status.toLowerCase();
 
   if (/converted|sold|member|retained|done|completed/.test(value)) {
-    return { icon: CheckCircle2, className: 'bg-emerald-900/95 text-emerald-50 border border-emerald-700/70' };
+    return { icon: CheckCircle2, className: 'bg-primary text-primary-foreground border border-primary/80' };
   }
 
   if (/lost|not interested|dropped|dead|cancel/.test(value)) {
-    return { icon: XCircle, className: 'bg-red-900/95 text-red-50 border border-red-700/70' };
+    return { icon: XCircle, className: 'bg-muted text-foreground border border-border' };
   }
 
   if (/pending|follow|awaiting|warm|new|fresh/.test(value)) {
-    return { icon: Clock3, className: 'bg-amber-700/95 text-amber-50 border border-amber-500/70' };
+    return { icon: Clock3, className: 'bg-primary/10 text-primary border border-primary/20' };
   }
 
-  return { icon: Activity, className: 'bg-blue-900/95 text-blue-50 border border-blue-700/70' };
+  return { icon: Activity, className: 'bg-muted text-muted-foreground border border-border' };
 }
 
 function getSourceMeta(source: string): LucideIcon {
@@ -95,7 +95,7 @@ export function LeadStageBadge({ label, className }: { label: string; className?
     <LeadBadge
       label={label}
       icon={getStageMeta(label)}
-      className={cn('bg-slate-950/95 text-slate-50 border border-slate-700/70', className)}
+      className={cn('bg-primary/10 text-primary border border-primary/20', className)}
     />
   );
 }
@@ -105,7 +105,7 @@ export function LeadSourceBadge({ label, className }: { label: string; className
     <LeadBadge
       label={label}
       icon={getSourceMeta(label)}
-      className={cn('bg-slate-900/95 text-slate-50 border border-slate-700/70', className)}
+      className={cn('bg-background text-foreground/80 border border-border', className)}
     />
   );
 }
@@ -127,12 +127,12 @@ const hoverFields: Array<{ label: string; getValue: (lead: Lead) => string }> = 
 
 export function LeadHoverInfo({ lead }: { lead: Lead }) {
   return (
-    <div className="w-full bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.22),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.98))] p-4 text-slate-100">
+    <div className="w-full bg-popover p-4 text-popover-foreground">
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <div className="rounded-[24px] border border-slate-700/70 bg-slate-900/95 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <p className="text-base font-semibold text-slate-50">{lead.fullName}</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+          <div className="rounded-[20px] border border-primary/20 bg-primary/10 px-4 py-4">
+            <p className="text-base font-semibold text-foreground">{lead.fullName}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {cleanLooseText(lead.email) || cleanLooseText(lead.phoneNumber) || 'No contact details yet'}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -142,35 +142,35 @@ export function LeadHoverInfo({ lead }: { lead: Lead }) {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-slate-700/70 bg-slate-900/80 p-4 shadow-sm">
-            <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-400">Remarks</p>
-            <p className="text-xs leading-relaxed text-slate-100">{cleanLooseText(lead.remarks) || 'No remarks added'}</p>
+          <div className="rounded-[20px] border border-border bg-background/70 p-4 shadow-sm">
+            <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Remarks</p>
+            <p className="text-xs leading-relaxed text-foreground/80">{cleanLooseText(lead.remarks) || 'No remarks added'}</p>
           </div>
         </div>
 
         <div className="space-y-4 min-w-0">
-          <div className="grid grid-cols-2 gap-3 rounded-[24px] border border-slate-700/70 bg-slate-900/80 p-4 shadow-sm">
+          <div className="grid grid-cols-2 gap-3 rounded-[20px] border border-border bg-background/70 p-4 shadow-sm">
             {hoverFields.map((field) => (
               <div key={field.label} className="min-w-0 space-y-1">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{field.label}</p>
-                <p className="break-words text-xs leading-relaxed text-slate-100">{field.getValue(lead)}</p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{field.label}</p>
+                <p className="break-words text-xs leading-relaxed text-foreground/80">{field.getValue(lead)}</p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-[24px] border border-slate-700/70 bg-slate-900/80 p-4 shadow-sm">
+          <div className="rounded-[20px] border border-border bg-background/70 p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Follow Ups</p>
-              <p className="text-[10px] text-slate-500">Planner view</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Follow Ups</p>
+              <p className="text-[10px] text-muted-foreground">Planner view</p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {lead.followUps.map((followUp) => (
-                <div key={followUp.index} className="rounded-2xl border border-slate-700/60 bg-slate-950/70 p-3">
+                <div key={followUp.index} className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white">FU {followUp.index}</span>
-                    <span className="text-[11px] font-mono-data text-slate-400">{cleanLooseText(followUp.date) || 'Not scheduled'}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">FU {followUp.index}</span>
+                    <span className="text-[11px] font-mono-data text-muted-foreground">{cleanLooseText(followUp.date) || 'Not scheduled'}</span>
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-200/85">{cleanLooseText(followUp.comment) || 'No feedback yet'}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-foreground/80">{cleanLooseText(followUp.comment) || 'No feedback yet'}</p>
                 </div>
               ))}
             </div>

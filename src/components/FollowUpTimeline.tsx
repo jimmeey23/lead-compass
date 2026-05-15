@@ -25,13 +25,13 @@ export function FollowUpTimeline({ followUps, status, compact = false, onQuickEd
           let iconEl: React.ReactNode = <CircleDashed className="h-3 w-3" />;
 
           if (completed) {
-            ringClass = 'border-emerald-300/70 bg-emerald-100 text-emerald-700';
+            ringClass = 'border-blue-300/70 bg-blue-100 text-blue-700';
             iconEl = <Check className="h-3 w-3" />;
           } else if (overdue) {
-            ringClass = 'border-red-300/70 bg-red-100 text-red-700 animate-pulse-overdue';
+            ringClass = 'border-slate-300/70 bg-slate-100 text-slate-700 animate-pulse-overdue';
             iconEl = <AlertCircle className="h-3 w-3" />;
           } else if (missing) {
-            ringClass = 'border-amber-300/70 bg-amber-100 text-amber-700';
+            ringClass = 'border-blue-200/70 bg-blue-50 text-blue-600';
             iconEl = <Clock3 className="h-3 w-3" />;
           } else if (hasDate) {
             ringClass = 'border-blue-300/70 bg-blue-100 text-blue-700';

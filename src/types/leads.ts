@@ -50,7 +50,7 @@ export interface AssociateStats {
   centersCovered: number;
 }
 
-export type ViewMode = 'table' | 'compact' | 'stage-board' | 'center-board' | 'associate' | 'comparison';
+export type ViewMode = 'table' | 'compact' | 'periodic' | 'stage-board' | 'center-board' | 'associate' | 'comparison';
 
 export type GroupableLeadKey =
   | 'fullName'
@@ -96,13 +96,16 @@ export interface FilterState {
   datePreset: DatePreset;
   customDateFrom: string;
   customDateTo: string;
+  convertedDatePreset: DatePreset;
+  convertedDateFrom: string;
+  convertedDateTo: string;
 }
 
 export const defaultFilters: FilterState = {
   associate: 'all',
   status: [],
   stageName: [],
-  center: 'KWALITY HOUSE, KEMPS CORNER',
+  center: 'all',
   sourceName: [],
   channel: [],
   conversionStatus: [],
@@ -111,6 +114,9 @@ export const defaultFilters: FilterState = {
   datePreset: 'lastWeek',
   customDateFrom: '',
   customDateTo: '',
+  convertedDatePreset: 'all',
+  convertedDateFrom: '',
+  convertedDateTo: '',
 };
 
 export function parseDateStr(dateStr: string): Date | null {
@@ -122,7 +128,8 @@ export function parseDateStr(dateStr: string): Date | null {
   // Try DD/MM/YYYY
   const parts = dateStr.split('/');
   if (parts.length === 3) {
-    const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    const normalizedYear = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+    const d = new Date(`${normalizedYear}-${parts[1]}-${parts[0]}`);
     if (!isNaN(d.getTime())) return d;
   }
   // Try YYYY-MM-DD
@@ -134,18 +141,23 @@ export function getDateRange(preset: DatePreset, customDateFrom?: string, custom
   if (preset === 'all') return null;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = (date: Date) => {
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  };
   
   switch (preset) {
     case '7days': {
       const from = new Date(today);
       from.setDate(from.getDate() - 7);
-      return { from, to: today };
+      return { from, to: endOfDay(today) };
     }
     case 'thisWeek': {
       const day = today.getDay();
       const from = new Date(today);
       from.setDate(from.getDate() - (day === 0 ? 6 : day - 1));
-      return { from, to: today };
+      return { from, to: endOfDay(today) };
     }
     case 'lastWeek': {
       const day = today.getDay();
@@ -155,33 +167,33 @@ export function getDateRange(preset: DatePreset, customDateFrom?: string, custom
       lastMonday.setDate(lastMonday.getDate() - 7);
       const lastSunday = new Date(thisMonday);
       lastSunday.setDate(lastSunday.getDate() - 1);
-      return { from: lastMonday, to: lastSunday };
+      return { from: lastMonday, to: endOfDay(lastSunday) };
     }
     case 'thisMonth': {
-      return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: today };
+      return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: endOfDay(today) };
     }
     case 'lastMonth': {
       const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const to = new Date(today.getFullYear(), today.getMonth(), 0);
-      return { from, to };
+      return { from, to: endOfDay(to) };
     }
     case 'thisQuarter': {
       const qStart = Math.floor(today.getMonth() / 3) * 3;
-      return { from: new Date(today.getFullYear(), qStart, 1), to: today };
+      return { from: new Date(today.getFullYear(), qStart, 1), to: endOfDay(today) };
     }
     case 'lastQuarter': {
       const qStart = Math.floor(today.getMonth() / 3) * 3;
       const from = new Date(today.getFullYear(), qStart - 3, 1);
       const to = new Date(today.getFullYear(), qStart, 0);
-      return { from, to };
+      return { from, to: endOfDay(to) };
     }
     case 'thisYear': {
-      return { from: new Date(today.getFullYear(), 0, 1), to: today };
+      return { from: new Date(today.getFullYear(), 0, 1), to: endOfDay(today) };
     }
     case 'lastYear': {
       return {
         from: new Date(today.getFullYear() - 1, 0, 1),
-        to: new Date(today.getFullYear() - 1, 11, 31),
+        to: endOfDay(new Date(today.getFullYear() - 1, 11, 31)),
       };
     }
     case 'custom': {
@@ -190,7 +202,7 @@ export function getDateRange(preset: DatePreset, customDateFrom?: string, custom
       if (!from && !to) return null;
       return {
         from: from ?? new Date(2000, 0, 1),
-        to: to ?? today,
+        to: to ? endOfDay(to) : endOfDay(today),
       };
     }
     default: return null;
