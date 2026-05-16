@@ -21,20 +21,20 @@ export function FollowUpTimeline({ followUps, status, compact = false, onQuickEd
           const overdue = hasDate && isOverdue(fu.date, status) && !hasComment;
           const missing = isMissingFeedback(fu);
 
-          let ringClass = 'border-slate-300/60 bg-slate-100 text-slate-400';
+          let ringClass = 'border-border bg-muted/70 text-muted-foreground';
           let iconEl: React.ReactNode = <CircleDashed className="h-3 w-3" />;
 
           if (completed) {
-            ringClass = 'border-blue-300/70 bg-blue-100 text-blue-700';
+            ringClass = 'semantic-success';
             iconEl = <Check className="h-3 w-3" />;
           } else if (overdue) {
-            ringClass = 'border-slate-300/70 bg-slate-100 text-slate-700 animate-pulse-overdue';
+            ringClass = 'semantic-warning animate-pulse-overdue';
             iconEl = <AlertCircle className="h-3 w-3" />;
           } else if (missing) {
-            ringClass = 'border-blue-200/70 bg-blue-50 text-blue-600';
+            ringClass = 'semantic-warning';
             iconEl = <Clock3 className="h-3 w-3" />;
           } else if (hasDate) {
-            ringClass = 'border-blue-300/70 bg-blue-100 text-blue-700';
+            ringClass = 'semantic-info';
             iconEl = <Clock3 className="h-3 w-3" />;
           }
 
@@ -90,25 +90,25 @@ export function FollowUpTimeline({ followUps, status, compact = false, onQuickEd
         let lineClass = 'h-0.5 w-3 ';
 
         if (completed) {
-          dotClass += 'bg-blue-950 text-blue-50';
+          dotClass += 'bg-[hsl(var(--semantic-success))] text-white';
         } else if (overdue) {
-          dotClass += 'bg-accent-overdue animate-pulse-overdue';
+          dotClass += 'bg-[hsl(var(--semantic-warning))] animate-pulse-overdue';
         } else if (missing) {
-          dotClass += 'bg-accent-warning';
+          dotClass += 'bg-[hsl(var(--semantic-warning))]';
         } else if (hasDate) {
-          dotClass += 'bg-primary';
+          dotClass += 'bg-[hsl(var(--semantic-info))]';
         } else {
           dotClass += 'bg-border';
         }
 
-    lineClass += completed ? 'bg-blue-900' : 'bg-border';
+    lineClass += completed ? 'bg-[hsl(var(--semantic-success))]' : 'bg-border';
 
         return (
           <div key={i} className="flex items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={dotClass}>
-                  {completed && <Check className="h-2 w-2 text-primary-foreground" />}
+                  {completed && <Check className="h-2 w-2 text-white" />}
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-[360px] p-3 space-y-1.5">

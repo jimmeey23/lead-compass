@@ -111,34 +111,34 @@ export function LeadComparison({ leads }: Props) {
   return (
     <div className="space-y-5">
       <div className="glass-strong rounded-2xl shadow-elevated overflow-hidden">
-        <div className="border-b border-border/30 px-5 py-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="dashboard-header-panel border-b border-white/10 px-5 py-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <GitCompareArrows className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <GitCompareArrows className="h-4 w-4 text-sky-200" />
               Associate comparison
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">A more detailed side-by-side view of pipeline quality, trial movement, follow-up pressure, and revenue outcomes.</p>
+            <p className="text-xs text-slate-300 mt-1">A more detailed side-by-side view of pipeline quality, trial movement, follow-up pressure, and revenue outcomes.</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[280px,220px]">
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Associates</label>
+              <label className="text-[11px] uppercase tracking-wider font-semibold text-slate-300">Associates</label>
               <MultiSelectDropdown
                 label="Associates"
                 options={associates}
                 selected={selectedAssociates}
                 onChange={setSelectedAssociates}
                 allLabel="Default top set"
-                buttonClassName="h-10 w-full justify-between rounded-xl border-border/40 bg-background/70 px-3 text-sm font-normal text-foreground"
+                buttonClassName="h-10 w-full justify-between rounded-xl border-white/20 bg-white/10 px-3 text-sm font-normal text-white hover:bg-white/15"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Compare by</label>
+              <label className="text-[11px] uppercase tracking-wider font-semibold text-slate-300">Compare by</label>
               <select
                 value={groupKey}
                 onChange={(event) => setGroupKey(event.target.value as GroupableLeadKey)}
-                className="h-10 rounded-xl border border-border/50 bg-background/70 px-3 text-sm text-foreground"
+                className="h-10 rounded-xl border border-white/20 bg-white/10 px-3 text-sm text-white"
               >
                 {comparisonGroupKeys.map((option) => (
                   <option key={option.key} value={option.key}>{option.label}</option>
@@ -163,8 +163,8 @@ export function LeadComparison({ leads }: Props) {
                   <p className="text-sm font-semibold text-foreground">{stat.associate}</p>
                   <p className="text-xs text-muted-foreground mt-1">{stat.total} filtered leads</p>
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-primary" />
+                <div className="h-10 w-10 rounded-xl semantic-info border flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-sky-700 dark:text-sky-300" />
                 </div>
               </div>
 
@@ -199,11 +199,11 @@ export function LeadComparison({ leads }: Props) {
 
         <div className="overflow-x-auto">
           <table className="min-w-full">
-            <thead className="gradient-subtle">
+            <thead className="dashboard-header-panel">
               <tr>
-                <th className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-muted-foreground">Metric</th>
+                <th className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-slate-200">Metric</th>
                 {associateStats.map((stat) => (
-                  <th key={stat.associate} className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-muted-foreground">{stat.associate}</th>
+                  <th key={stat.associate} className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-slate-200">{stat.associate}</th>
                 ))}
               </tr>
             </thead>
@@ -228,11 +228,11 @@ export function LeadComparison({ leads }: Props) {
 
         <div className="overflow-x-auto">
           <table className="min-w-full">
-            <thead className="gradient-subtle">
+            <thead className="dashboard-header-panel">
               <tr>
-                <th className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-muted-foreground">Group</th>
+                <th className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-slate-200">Group</th>
                 {associateStats.map((stat) => (
-                  <th key={stat.associate} className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-muted-foreground">{stat.associate}</th>
+                  <th key={stat.associate} className="h-11 px-5 text-left text-[10px] uppercase tracking-wider text-slate-200">{stat.associate}</th>
                 ))}
               </tr>
             </thead>
@@ -251,7 +251,7 @@ export function LeadComparison({ leads }: Props) {
                           <span className="text-[11px] text-muted-foreground/80">{pct.toFixed(1)}%</span>
                         </div>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-border/50">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                          <div className="h-full rounded-full bg-[hsl(var(--semantic-info))]" style={{ width: `${pct}%` }} />
                         </div>
                       </td>
                     );
@@ -278,8 +278,8 @@ function InsightCard({ icon: Icon, label, value, note }: { icon: typeof Users; l
   return (
     <div className="rounded-2xl border border-border/40 bg-background/70 p-4 shadow-card">
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Icon className="h-4 w-4 text-primary" />
+        <div className="h-8 w-8 rounded-xl semantic-info border flex items-center justify-center">
+          <Icon className="h-4 w-4" />
         </div>
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
@@ -292,9 +292,9 @@ function InsightCard({ icon: Icon, label, value, note }: { icon: typeof Users; l
 function Metric({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'green' | 'blue' | 'red' }) {
   const toneClass = {
     default: 'bg-background border-border/40 text-foreground',
-    green: 'bg-blue-600 border-blue-500 text-white',
-    blue: 'bg-blue-50 border-blue-100 text-blue-800',
-    red: 'bg-slate-100 border-slate-200 text-slate-700',
+    green: 'semantic-success',
+    blue: 'semantic-info',
+    red: 'semantic-warning',
   }[tone];
 
   return (

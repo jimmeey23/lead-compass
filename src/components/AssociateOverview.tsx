@@ -108,18 +108,18 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
     <div className="space-y-5">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-7">
-        <SummaryCard icon={Users} label="Total Leads" value={totalLeads} />
-        <SummaryCard icon={AlertTriangle} label="Needs Action" value={needsAction} />
-        <SummaryCard icon={UserCheck} label="Converted" value={totalConverted} />
-        <SummaryCard icon={TrendingUp} label="Lost" value={totalLost} />
-        <SummaryCard icon={Target} label="Conv. Rate" value={`${overallConvRate}%`} />
-        <SummaryCard icon={TrendingUp} label="Revenue" value={formatCompactIndianCurrency(totalRevenue)} />
-        <SummaryCard icon={Target} label="Avg Visits" value={avgVisits} />
+        <SummaryCard icon={Users} label="Total Leads" value={totalLeads} tone="info" />
+        <SummaryCard icon={AlertTriangle} label="Needs Action" value={needsAction} tone="warning" />
+        <SummaryCard icon={UserCheck} label="Converted" value={totalConverted} tone="success" />
+        <SummaryCard icon={TrendingUp} label="Lost" value={totalLost} tone="muted" />
+        <SummaryCard icon={Target} label="Conv. Rate" value={`${overallConvRate}%`} tone="success" />
+        <SummaryCard icon={TrendingUp} label="Revenue" value={formatCompactIndianCurrency(totalRevenue)} tone="info" />
+        <SummaryCard icon={Target} label="Avg Visits" value={avgVisits} tone="info" />
       </div>
 
       {/* Associate Table */}
-      <div className="glass-strong rounded-2xl shadow-elevated overflow-hidden">
-        <div className="px-5 py-3 border-b border-border/30 bg-background/70">
+      <div className="lux-panel overflow-hidden rounded-2xl">
+        <div className="px-5 py-3 border-b border-border/50 bg-card/70">
           <h3 className="text-sm font-semibold text-foreground">Associate Performance</h3>
         </div>
         <div className="overflow-x-auto">
@@ -145,12 +145,12 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                   <th
                     key={label}
                     onClick={() => toggleSort(key)}
-                    className="h-12 cursor-pointer px-5 text-left align-middle text-[10px] font-semibold uppercase tracking-wider text-slate-300 whitespace-nowrap transition-colors"
+                    className="h-12 cursor-pointer px-5 text-left align-middle text-[10px] font-semibold uppercase tracking-wider text-white/80 whitespace-nowrap transition-colors"
                   >
                     <span className="inline-flex items-center gap-1.5">{label} <SortIcon column={key} /></span>
                   </th>
                 ))}
-                <th className="h-12 px-5 text-left align-middle font-semibold text-slate-300 text-[10px] uppercase tracking-wider whitespace-nowrap" />
+                <th className="h-12 px-5 text-left align-middle font-semibold text-white/80 text-[10px] uppercase tracking-wider whitespace-nowrap" />
               </tr>
             </thead>
             <tbody>
@@ -158,7 +158,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                 <Fragment key={s.name}>
                   <tr
                     onClick={() => setExpandedAssociate(expandedAssociate === s.name ? null : s.name)}
-                    className="group cursor-pointer border-b border-border/20 bg-white/75 transition-colors duration-150 odd:bg-background/88 even:bg-slate-50/78 hover:bg-slate-100"
+                    className="lux-row group cursor-pointer border-b border-border/40 transition-colors duration-150"
                   >
                     <td className="px-5 py-3 text-sm font-medium text-foreground whitespace-nowrap">{s.name}</td>
                     <td className="px-5 py-3 text-sm font-mono text-foreground">{s.totalLeads}</td>
@@ -168,7 +168,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-2 w-20 overflow-hidden rounded-full bg-border/40">
-                          <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(s.conversionRate, 100)}%` }} />
+                          <div className="h-full rounded-full bg-[hsl(var(--semantic-success))]" style={{ width: `${Math.min(s.conversionRate, 100)}%` }} />
                         </div>
                         <span className="text-xs font-mono font-medium text-foreground whitespace-nowrap">{s.conversionRate.toFixed(1)}%</span>
                       </div>
@@ -180,7 +180,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                     <td className="px-5 py-3 text-sm font-mono text-foreground whitespace-nowrap">{formatCompactIndianCurrency(s.avgLtv)}</td>
                     <td className="px-5 py-3 text-sm font-mono text-foreground">{s.centersCovered}</td>
                     <td className={`px-5 py-3 text-sm font-mono ${s.overdueFollowUps > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                      {s.overdueFollowUps > 0 && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />}
+                      {s.overdueFollowUps > 0 && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--semantic-warning))]" />}
                       {s.overdueFollowUps}
                     </td>
                     <td className="px-5 py-3 text-sm font-mono font-medium text-foreground whitespace-nowrap">{formatCompactIndianCurrency(s.totalLtv)}</td>
@@ -193,16 +193,16 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                   {expandedAssociate === s.name && (
                     <tr>
                       <td colSpan={14} className="p-0 border-b border-border/15">
-                        <div className="bg-blue-50/45 px-5 py-3">
+                        <div className="bg-muted/45 px-5 py-3">
                           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
                             {s.name}'s Leads ({associateLeads.length})
                           </p>
-                          <div className="overflow-x-auto rounded-xl border border-border/30 bg-background/50">
+                          <div className="overflow-x-auto rounded-xl border border-border/50 bg-background/50">
                             <table className="w-full border-separate border-spacing-0">
                               <thead className="lead-table-head">
                                 <tr className="lead-table-header">
                                   {['Name', 'Date', 'Stage', 'Status', 'Source', 'Remarks', 'LTV'].map(h => (
-                                    <th key={h} className="h-10 px-4 text-left text-[10px] uppercase tracking-wider font-semibold text-slate-300 whitespace-nowrap">{h}</th>
+                                    <th key={h} className="h-10 px-4 text-left text-[10px] uppercase tracking-wider font-semibold text-white/80 whitespace-nowrap">{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -211,7 +211,7 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
                                   <tr
                                     key={lead.id}
                                     onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }}
-                                    className="cursor-pointer border-b border-border/20 bg-white/75 transition-colors duration-150 odd:bg-background/88 even:bg-slate-50/78 hover:bg-slate-100"
+                                    className="lux-row cursor-pointer border-b border-border/40 transition-colors duration-150"
                                   >
                                     <td className="px-4 py-2.5">
                                       <HoverCard openDelay={120} closeDelay={120}>
@@ -268,12 +268,19 @@ export function AssociateOverview({ leads, allLeads, options }: Props) {
   );
 }
 
-function SummaryCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number | string }) {
+function SummaryCard({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: string; value: number | string; tone: 'success' | 'warning' | 'info' | 'muted' }) {
+  const toneClass = {
+    success: 'semantic-success',
+    warning: 'semantic-warning',
+    info: 'semantic-info',
+    muted: 'semantic-muted',
+  }[tone];
+
   return (
-    <div className="glass-strong rounded-2xl shadow-card p-5">
+    <div className="lux-panel rounded-2xl p-5">
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Icon className="h-4 w-4 text-primary" />
+        <div className={`h-8 w-8 rounded-xl border flex items-center justify-center ${toneClass}`}>
+          <Icon className="h-4 w-4" />
         </div>
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>

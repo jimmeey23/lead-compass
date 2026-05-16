@@ -25,18 +25,18 @@ function getStatusMeta(status: string): { icon: LucideIcon; className: string } 
   const value = status.toLowerCase();
 
   if (/converted|sold|member|retained|done|completed/.test(value)) {
-    return { icon: CheckCircle2, className: 'bg-primary text-primary-foreground border border-primary/80' };
+    return { icon: CheckCircle2, className: 'semantic-success border' };
   }
 
   if (/lost|not interested|dropped|dead|cancel/.test(value)) {
-    return { icon: XCircle, className: 'bg-muted text-foreground border border-border' };
+    return { icon: XCircle, className: 'semantic-muted border' };
   }
 
   if (/pending|follow|awaiting|warm|new|fresh/.test(value)) {
-    return { icon: Clock3, className: 'bg-primary/10 text-primary border border-primary/20' };
+    return { icon: Clock3, className: 'semantic-warning border' };
   }
 
-  return { icon: Activity, className: 'bg-muted text-muted-foreground border border-border' };
+  return { icon: Activity, className: 'semantic-info border' };
 }
 
 function getSourceMeta(source: string): LucideIcon {
@@ -56,6 +56,15 @@ function getStageMeta(stage: string): LucideIcon {
   if (/not interested|lost/.test(value)) return AlertCircle;
   if (/sold|member|converted/.test(value)) return CheckCircle2;
   return Flag;
+}
+
+function getStageTone(stage: string): string {
+  const value = stage.toLowerCase();
+  if (/trial scheduled|scheduled|trial/.test(value)) return 'semantic-info border';
+  if (/sold|member|converted/.test(value)) return 'semantic-success border';
+  if (/not interested|lost|dropped|dead|cancel/.test(value)) return 'semantic-muted border';
+  if (/no response|pending|follow/.test(value)) return 'semantic-warning border';
+  return 'border border-border bg-background text-foreground/80';
 }
 
 function LeadBadge({
@@ -95,7 +104,7 @@ export function LeadStageBadge({ label, className }: { label: string; className?
     <LeadBadge
       label={label}
       icon={getStageMeta(label)}
-      className={cn('bg-primary/10 text-primary border border-primary/20', className)}
+      className={cn(getStageTone(label), className)}
     />
   );
 }
@@ -105,7 +114,7 @@ export function LeadSourceBadge({ label, className }: { label: string; className
     <LeadBadge
       label={label}
       icon={getSourceMeta(label)}
-      className={cn('bg-background text-foreground/80 border border-border', className)}
+      className={cn('border border-border bg-background text-slate-700 dark:text-slate-200', className)}
     />
   );
 }
@@ -130,7 +139,7 @@ export function LeadHoverInfo({ lead }: { lead: Lead }) {
     <div className="w-full bg-popover p-4 text-popover-foreground">
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <div className="rounded-[20px] border border-primary/20 bg-primary/10 px-4 py-4">
+          <div className="rounded-xl border border-border/70 bg-muted/55 px-4 py-4">
             <p className="text-base font-semibold text-foreground">{lead.fullName}</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {cleanLooseText(lead.email) || cleanLooseText(lead.phoneNumber) || 'No contact details yet'}
@@ -165,7 +174,7 @@ export function LeadHoverInfo({ lead }: { lead: Lead }) {
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {lead.followUps.map((followUp) => (
-                <div key={followUp.index} className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
+                <div key={followUp.index} className="rounded-xl border border-border/70 bg-muted/55 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">FU {followUp.index}</span>
                     <span className="text-[11px] font-mono-data text-muted-foreground">{cleanLooseText(followUp.date) || 'Not scheduled'}</span>

@@ -18,7 +18,7 @@ import {
   getElapsedDaysLabel,
   type LeadRenderDataRow,
 } from '@/lib/lead-utils';
-import { LeadHoverInfo } from './LeadDisplay';
+import { LeadHoverInfo, LeadStageBadge } from './LeadDisplay';
 import { Button } from '@/components/ui/button';
 import { MultiSelectDropdown } from './MultiSelectDropdown';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,7 +71,7 @@ const TABLE_COLUMNS: Array<{ key: string; label: string; width: number; sortKey?
   { key: 'createdAt', label: 'Date', width: 140, sortKey: 'createdAt' },
   { key: 'associate', label: 'Associate', width: 150, sortKey: 'associate' },
   { key: 'sourceName', label: 'Source', width: 160, sortKey: 'sourceName' },
-  { key: 'stageName', label: 'Stage', width: 190, sortKey: 'stageName' },
+  { key: 'stageName', label: 'Stage', width: 132, sortKey: 'stageName' },
   { key: 'remarks', label: 'Remarks', width: 340 },
   { key: 'followUps', label: 'Follow-ups', width: 200 },
   { key: 'center', label: 'Center', width: 220 },
@@ -329,38 +329,51 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               setIsSidebarInteracting(false);
             }
           }}
-          className={`flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border/75 bg-card/95 text-card-foreground shadow-[inset_-1px_0_0_rgba(37,99,235,0.08)] transition-[width] duration-300 dark:bg-card/80 dark:shadow-[inset_-1px_0_0_rgba(125,211,252,0.12)] ${isSidebarCollapsed ? 'w-[64px]' : 'w-[360px]'}`}
+          className={`lux-sidebar flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border/75 text-card-foreground shadow-[inset_-1px_0_0_rgba(159,29,76,0.10)] transition-[width] duration-300 dark:shadow-[inset_-1px_0_0_rgba(230,80,126,0.12)] ${isSidebarCollapsed ? 'w-[64px]' : 'w-[360px]'}`}
         >
-          <div className={`flex h-14 items-center border-b border-border/75 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-900 dark:to-blue-950/70 ${isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'}`}>
-            {!isSidebarCollapsed ? (
-              <div>
-                <p className="text-sm font-semibold text-foreground">Command panel</p>
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Filters · Groups · Counts</p>
-              </div>
+          <div className={`lux-sidebar-header flex h-12 items-center border-b border-white/15 ${isSidebarCollapsed ? 'justify-between px-2 py-2' : 'px-4 py-2'}`}>
+            {isSidebarCollapsed ? (
+              <>
+                <div className="lux-icon-tile rounded-2xl p-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  className="h-8 w-8 rounded-xl p-0 text-white/75 hover:bg-white/15 hover:text-white"
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
+              </>
             ) : (
-              <div className="rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <>
+              <div>
+                <p className="text-sm font-semibold text-white">Command panel</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/70">Filters · Groups · Counts</p>
               </div>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarCollapsed((current) => !current)}
-              className={`rounded-xl p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary ${isSidebarCollapsed ? 'absolute right-2 top-3 h-8 w-8' : 'h-9 w-9'}`}
-            >
-              {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </Button>
-            {!isSidebarCollapsed && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSidebarPinned((current) => !current)}
-                className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-              >
-                {isSidebarPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
-              </Button>
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarCollapsed(true)}
+                  className="h-9 w-9 rounded-xl p-0 text-white/75 hover:bg-white/15 hover:text-white"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarPinned((current) => !current)}
+                  className="h-9 w-9 rounded-xl p-0 text-white/75 hover:bg-white/15 hover:text-white"
+                >
+                  {isSidebarPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
+                </Button>
+              </div>
+              </>
             )}
           </div>
 
@@ -370,55 +383,70 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
               <CollapsedRailButton icon={Layers3} label="Groups" value={String(groupKeys.length)} onClick={() => setIsSidebarCollapsed(false)} />
               <CollapsedRailButton icon={Sparkles} label="Rows" value={String(sorted.length)} onClick={() => setIsSidebarCollapsed(false)} />
               <CollapsedRailButton icon={CalendarRange} label="Page" value={`${page}`} onClick={() => setIsSidebarCollapsed(false)} />
-              <div className="mt-auto flex h-16 items-center justify-center overflow-hidden rounded-full border border-primary/20 bg-primary/10 px-1 text-[8px] font-semibold uppercase tracking-[0.24em] text-primary [writing-mode:vertical-rl] rotate-180">
+              <div className="mt-auto flex h-16 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-primary/15 px-1 text-[8px] font-semibold uppercase tracking-[0.24em] text-primary [writing-mode:vertical-rl] rotate-180">
                 Rail
               </div>
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-4">
-                <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">Overview</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">A quick pulse of the visible workspace.</p>
+                <section className="lux-section overflow-hidden rounded-xl">
+                  <div className="lux-section-header mb-3 flex items-center justify-between gap-3 px-3.5 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Overview</p>
+                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Visible workspace pulse</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
                     {sidebarStatCards.map((card) => (
                       <SidebarStatCard key={card.label} label={card.label} value={card.value} />
                     ))}
                   </div>
                 </section>
 
-                <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Counts</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">For the full filtered result set.</p>
+                <section className="lux-section overflow-hidden rounded-xl">
+                  <div className="lux-section-header mb-3 flex items-center justify-between px-3.5 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Counts</p>
+                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Full filtered result set</p>
+                      </div>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 rounded-xl px-2 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
+                      className="h-8 rounded-xl border border-white/20 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20 hover:text-white"
                       onClick={() => setIsStageSummaryCollapsed((current) => !current)}
                     >
                       {isStageSummaryCollapsed ? 'More' : 'Less'}
                     </Button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 px-3.5 pb-3.5">
                     <SummaryCountTable title="Stages" rows={displayedStageSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
                     <SummaryCountTable title="Sources" rows={displayedSourceSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
                   </div>
                 </section>
 
                 {filters && onFiltersChange && (
-                  <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Filters</p>
+                  <section className="lux-section overflow-hidden rounded-xl">
+                    <div className="lux-section-header mb-3 flex items-center justify-between gap-2 px-3.5 py-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                          <SlidersHorizontal className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Filters</p>
+                          <p className="mt-0.5 text-[11px] lux-section-header-muted">Refine the active lead set</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {activeFilterCount > 0 && (
@@ -427,14 +455,14 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             variant="ghost"
                             size="sm"
                             onClick={() => onFiltersChange(defaultFilters)}
-                            className="h-8 rounded-xl px-2 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
+                            className="h-8 rounded-xl border border-white/20 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20 hover:text-white"
                           >
                             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
                           </Button>
                         )}
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3 px-3.5 pb-3.5">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Search</label>
                         <div className="relative">
@@ -443,7 +471,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             value={filters.search}
                             onChange={(event) => onFiltersChange({ ...filters, search: event.target.value })}
                             placeholder="Name, phone, email, ID"
-                            className="h-10 rounded-xl border-border/70 bg-background/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground"
+                            className="lux-sidebar-control h-10 rounded-xl pl-10 text-sm text-foreground placeholder:text-muted-foreground"
                           />
                         </div>
                       </div>
@@ -520,23 +548,28 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                   </section>
                 )}
 
-                  <section className="rounded-[20px] border border-border/70 bg-card/80 p-3.5 shadow-[0_14px_34px_-30px_rgba(37,99,235,0.55)] dark:bg-white/[0.035]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Layers3 className="h-4 w-4 text-primary" />
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Grouping</p>
+                  <section className="lux-section overflow-hidden rounded-xl">
+                  <div className="lux-section-header mb-3 flex items-center justify-between gap-3 px-3.5 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                        <Layers3 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Grouping</p>
+                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Organize rows into clusters</p>
+                      </div>
                     </div>
                     <select
                       value={pageSize}
                       onChange={(event) => setPageSize(Number(event.target.value))}
-                      className="h-7 rounded-lg border border-border/70 bg-background/80 px-2 text-[10px] font-medium text-foreground"
+                      className="h-7 rounded-lg border border-white/20 bg-white/10 px-2 text-[10px] font-medium text-white"
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <option key={size} value={size}>{size}/page</option>
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 px-3.5 pb-3.5">
                     <SidebarSelect
                       label="Add grouping"
                       value={groupToAdd}
@@ -581,7 +614,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
           )}
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/80 dark:bg-slate-950/30">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/80 dark:bg-background/50">
           <div className="min-h-0 flex-1 overflow-auto lead-scroll-area">
           <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${columnWidths.reduce((sum, width) => sum + width, 0)}px` }}>
             <colgroup>
@@ -607,7 +640,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                         aria-orientation="vertical"
                         aria-label={`Resize ${column.label} column`}
                         onMouseDown={(event) => startColumnResize(index, event)}
-                        className="absolute right-0 top-1/2 h-6 w-2 -translate-y-1/2 cursor-col-resize rounded-full bg-transparent transition-colors before:absolute before:left-1/2 before:top-0 before:h-full before:w-px before:-translate-x-1/2 before:bg-white/20 hover:bg-white/10 hover:before:bg-sky-300"
+                        className="absolute right-0 top-1/2 h-6 w-2 -translate-y-1/2 cursor-col-resize rounded-full bg-transparent transition-colors before:absolute before:left-1/2 before:top-0 before:h-full before:w-px before:-translate-x-1/2 before:bg-white/20 hover:bg-white/10 hover:before:bg-sky-200"
                       />
                     )}
                   </th>
@@ -619,11 +652,11 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                 if (row.type === 'group') {
                   const collapsed = collapsedGroupIds.includes(row.id);
                   return (
-                    <tr key={row.id} className="h-11 cursor-pointer bg-blue-700 text-blue-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-blue-600 dark:bg-blue-950 dark:hover:bg-blue-900">
-                      <td className="border-b border-blue-600/70 px-4 py-2 align-middle text-xs font-mono text-blue-100 whitespace-nowrap">{row.groupNumber}</td>
-                      <td colSpan={10} className="border-b border-blue-600/70 px-4 py-2 align-middle dark:border-blue-900" onClick={() => toggleGroup(row.id)}>
+                    <tr key={row.id} className="h-11 cursor-pointer dashboard-header-panel hover:brightness-110">
+                      <td className="border-b border-white/10 px-4 py-2 align-middle text-xs font-mono text-slate-200/80 whitespace-nowrap">{row.groupNumber}</td>
+                      <td colSpan={10} className="border-b border-white/10 px-4 py-2 align-middle" onClick={() => toggleGroup(row.id)}>
                         <div className="flex items-center gap-3" style={{ paddingLeft: `${row.depth * 18}px` }}>
-                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-50/95 shrink-0">
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/95 shrink-0">
                             {collapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             {GROUPABLE_COLUMNS.find((column) => column.key === row.groupKey)?.label}: {row.label}
                           </span>
@@ -655,7 +688,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
           </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-border/75 bg-card/90 px-5 py-2.5 shadow-[0_-16px_40px_-34px_rgba(15,23,42,0.8)] dark:bg-card/80">
+          <div className="flex items-center justify-between border-t border-border/75 bg-card/95 px-5 py-2.5 shadow-[0_-16px_40px_-34px_rgba(15,23,42,0.8)] dark:bg-card/80">
           <p className="text-[11px] text-muted-foreground">Showing <span className="font-mono-data font-semibold text-foreground">{pagedRows.length}</span> rows on this page.</p>
           <div className="flex items-center gap-1.5">
             <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg px-2.5 text-[11px]" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
@@ -679,7 +712,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
       </div>
 
       {filters && onFiltersChange && (
-        <div className="pointer-events-none fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 md:bottom-8 md:right-8">
+        <div className="pointer-events-none fixed bottom-24 right-6 z-40 flex flex-col items-end gap-3 md:bottom-28 md:right-8">
           {isQuickFiltersOpen && (
             <div className="pointer-events-auto w-[min(420px,calc(100vw-1.5rem))] rounded-[28px] border border-border/40 bg-background/90 p-4 shadow-elevated backdrop-blur-2xl">
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -729,7 +762,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
             type="button"
             size="sm"
             onClick={() => setIsQuickFiltersOpen((current) => !current)}
-            className="pointer-events-auto h-12 rounded-full bg-[linear-gradient(135deg,#1d4ed8,#0ea5e9)] px-4 text-white shadow-[0_18px_40px_-18px_rgba(37,99,235,0.85)] hover:brightness-105"
+            className="pointer-events-auto h-12 rounded-full bg-[linear-gradient(135deg,hsl(var(--dashboard-header)),hsl(var(--dashboard-header-2)))] px-4 text-white shadow-[0_18px_40px_-18px_rgba(15,23,42,0.55)] hover:brightness-110"
           >
             <SlidersHorizontal className="mr-2 h-4 w-4" /> Quick filters
           </Button>
@@ -825,7 +858,7 @@ function LeadDataRow({
   return (
     <tr
       onClick={() => onSelect(lead)}
-      className={`group cursor-pointer border-b border-border/60 bg-card transition-colors duration-150 odd:bg-card even:bg-muted/40 hover:bg-primary/10 dark:odd:bg-slate-950/30 dark:even:bg-slate-900/30 dark:hover:bg-blue-950/30 ${rowHeightClass}`}
+      className={`lux-row group cursor-pointer border-b border-border/60 transition-colors duration-150 ${rowHeightClass}`}
     >
       <td className="px-4 py-2 align-middle text-xs font-mono text-muted-foreground whitespace-nowrap">{row.rowNumber}</td>
       <td className="px-4 py-2 align-middle">
@@ -835,7 +868,7 @@ function LeadDataRow({
               <div className="truncate text-sm font-semibold leading-tight text-foreground">{lead.fullName}</div>
             </div>
           </HoverCardTrigger>
-          <HoverCardContent side="right" align="start" sideOffset={12} collisionPadding={20} className="z-[120] w-[min(980px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-visible rounded-[24px] border border-border/70 bg-popover p-0 shadow-[0_32px_90px_-40px_rgba(37,99,235,0.45)]">
+          <HoverCardContent side="right" align="start" sideOffset={12} collisionPadding={20} className="z-[120] w-[min(980px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-visible rounded-[24px] border border-border/70 bg-popover p-0 shadow-[0_32px_90px_-40px_rgba(127,18,49,0.34)]">
             <LeadHoverInfo lead={lead} />
           </HoverCardContent>
         </HoverCard>
@@ -850,7 +883,7 @@ function LeadDataRow({
         <span className="block truncate text-xs font-semibold text-foreground/90">{sourcePreview}</span>
       </td>
       <td className="px-4 py-2 align-middle">
-        <span className="block truncate rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{stagePreview}</span>
+        <LeadStageBadge label={stagePreview} className="h-7 w-[124px] justify-start px-2" />
       </td>
       <td className="px-4 py-2 align-middle">
         <Tooltip>
@@ -898,10 +931,10 @@ function SummaryCountTable({
   const visibleRows = rows.slice(0, rowLimit);
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${dark ? 'border-border/60 bg-background/70 shadow-sm' : 'border-border/30 bg-background/70'}`}>
-      <div className={`flex items-center justify-between border-b px-3 py-2 ${dark ? 'border-border/50 bg-primary/5' : 'border-border/20'}`}>
-        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${dark ? 'text-foreground' : 'text-muted-foreground'}`}>{title}</h4>
-        <span className={`rounded-full px-2 py-0.5 font-mono-data text-[10px] font-semibold ${dark ? 'bg-primary/10 text-primary ring-1 ring-primary/20' : 'bg-muted text-foreground'}`}>
+    <div className={`overflow-hidden rounded-2xl border ${dark ? 'border-border/70 bg-background/70 shadow-sm' : 'border-border/30 bg-background/70'}`}>
+      <div className={`flex items-center justify-between border-b px-3 py-2 ${dark ? 'dashboard-header-panel border-white/10' : 'border-border/20'}`}>
+        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${dark ? 'text-white' : 'text-muted-foreground'}`}>{title}</h4>
+        <span className={`rounded-full px-2 py-0.5 font-mono-data text-[10px] font-semibold ${dark ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-muted text-foreground'}`}>
           {rows.length} rows
         </span>
       </div>
@@ -939,7 +972,7 @@ function SummaryCountTable({
               <td colSpan={3} className={`px-3 py-4 text-center text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>No rows match the current filters.</td>
             </tr>
           )}
-          <tr className={`border-t ${dark ? 'border-primary/20 bg-primary/10' : 'border-border/30 bg-muted/40'}`}>
+          <tr className={`border-t ${dark ? 'border-border/50 bg-slate-100/70 dark:bg-slate-900/60' : 'border-border/30 bg-muted/40'}`}>
             <td className={`px-3 py-2 text-xs font-semibold ${dark ? 'text-foreground' : 'text-foreground'}`}>Total</td>
             <td className={`px-2 py-2 text-right font-mono-data text-xs font-bold ${dark ? 'text-foreground' : 'text-foreground'}`}>{totalCount}</td>
             <td className={`px-2 py-2 text-right text-xs font-semibold ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{totalCount > 0 ? '100.0%' : '0.0%'}</td>
@@ -952,7 +985,7 @@ function SummaryCountTable({
 
 function SidebarStatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-primary/20 bg-gradient-to-br from-card to-primary/10 px-3 py-2.5 shadow-sm">
+    <div className="lux-sidebar-stat min-w-0 rounded-xl px-3 py-2.5">
       <p className="truncate text-[9px] uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
       <p className="mt-1 truncate font-mono-data text-base font-semibold text-foreground">{value}</p>
     </div>
@@ -974,11 +1007,11 @@ function CollapsedRailButton({
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-primary/20 bg-card text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+      className="group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-border/70 bg-background/90 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 dark:hover:bg-sky-950/40"
       aria-label={value ? `${label}: ${value}` : label}
       title={value ? `${label}: ${value}` : label}
     >
-      <Icon className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-105" />
+      <Icon className="h-3.5 w-3.5 text-sky-700 transition-transform group-hover:scale-105 dark:text-sky-300" />
       {value && <span className="mt-1 font-mono-data text-[9px] font-semibold leading-none text-foreground">{value}</span>}
     </button>
   );
@@ -1000,7 +1033,7 @@ function QuickFilterRow({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <div className="rounded-xl bg-primary/10 p-1.5 text-primary">
+        <div className="rounded-xl bg-[linear-gradient(135deg,hsl(var(--dashboard-header)),hsl(var(--dashboard-header-2)))] p-1.5 text-white shadow-sm">
           <Icon className="h-3.5 w-3.5" />
         </div>
         <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">{label}</span>
@@ -1036,9 +1069,9 @@ function GroupMetricPill({
   value: number;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium text-blue-50 backdrop-blur">
-      <Icon className="h-3 w-3 text-blue-100" />
-      <span className="text-blue-100/80">{label}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur">
+      <Icon className="h-3 w-3 text-sky-100" />
+      <span className="text-white/80">{label}</span>
       <span className="font-mono-data text-white">{value}</span>
     </span>
   );
@@ -1061,7 +1094,7 @@ function SidebarSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-border/70 bg-background/80 px-3 text-sm text-foreground"
+        className="lux-sidebar-control h-10 w-full rounded-xl px-3 text-sm text-foreground"
       >
         {options.map((option) => (
           <option key={`${label}-${option.value}`} value={option.value}>{option.label}</option>
@@ -1091,7 +1124,7 @@ function SidebarMultiSelect({
         selected={selected}
         onChange={onChange}
         allLabel="All"
-        buttonClassName="h-10 w-full justify-between rounded-xl border border-border/70 bg-background/80 px-3 text-sm font-normal text-foreground"
+        buttonClassName="lux-sidebar-control h-10 w-full justify-between rounded-xl px-3 text-sm font-normal text-foreground"
       />
     </div>
   );

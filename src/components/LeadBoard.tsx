@@ -55,16 +55,16 @@ export function LeadBoard({ leads, allLeads, options, groupBy, title }: Props) {
 
   return (
     <>
-      <div className="glass-strong rounded-2xl shadow-elevated overflow-hidden">
-        <div className="border-b border-border/30 px-5 py-4 flex items-center justify-between">
+      <div className="glass-strong rounded-xl shadow-elevated overflow-hidden">
+        <div className="dashboard-header-panel border-b border-white/10 px-5 py-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4 text-sky-200" />
               {title}
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">Grouped by {groupBy === 'stageName' ? 'stage' : 'center'} for quick scanning.</p>
+            <p className="text-xs text-slate-300 mt-1">Grouped by {groupBy === 'stageName' ? 'stage' : 'center'} for quick scanning.</p>
           </div>
-          <span className="text-xs text-muted-foreground">{groups.length} columns • {totalRenderedCards} cards rendered</span>
+          <span className="text-xs text-slate-300">{groups.length} columns • {totalRenderedCards} cards rendered</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -75,14 +75,14 @@ export function LeadBoard({ leads, allLeads, options, groupBy, title }: Props) {
               const remaining = Math.max(0, group.items.length - visibleItems.length);
 
               return (
-                <section key={group.label} className="w-[300px] shrink-0 rounded-2xl border border-border/40 bg-background/70">
-                  <header className="flex items-center justify-between border-b border-border/30 px-4 py-3">
+                <section key={group.label} className="w-[276px] shrink-0 overflow-hidden rounded-xl border border-border/60 bg-background/80 shadow-card">
+                  <header className="dashboard-header-panel flex items-center justify-between border-b border-white/10 px-4 py-3">
                     <div>
-                      <h4 className="text-sm font-semibold text-foreground">{group.label}</h4>
-                      <p className="text-[11px] text-muted-foreground">{group.items.length} lead{group.items.length !== 1 ? 's' : ''}</p>
+                      <h4 className="text-sm font-semibold text-white">{group.label}</h4>
+                      <p className="text-[11px] text-slate-300">{group.items.length} lead{group.items.length !== 1 ? 's' : ''}</p>
                     </div>
-                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-primary" />
+                    <div className="h-9 w-9 rounded-lg bg-white/10 flex items-center justify-center ring-1 ring-white/15">
+                      <Users className="h-4 w-4 text-sky-200" />
                     </div>
                   </header>
 
@@ -92,7 +92,7 @@ export function LeadBoard({ leads, allLeads, options, groupBy, title }: Props) {
                         key={lead.id}
                         type="button"
                         onClick={() => setSelectedLead(lead)}
-                        className="w-full rounded-2xl border border-border/30 bg-background p-3 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03]"
+                        className="w-full rounded-xl border border-border/55 bg-background p-3 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50/70 dark:hover:bg-sky-950/30"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>

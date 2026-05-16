@@ -210,35 +210,37 @@ export function PeriodicAnalytics({ leads }: Props) {
 
   return (
     <div className="space-y-5">
-      <section className="premium-panel overflow-hidden rounded-[28px]">
-        <div className="border-b border-blue-200 bg-[linear-gradient(135deg,#1d4ed8,#2563eb,#06b6d4)] px-5 py-4 text-white">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-base font-semibold">
-                <BarChart3 className="h-4 w-4 text-sky-300" />
-                Periodic analytics
-              </h2>
-              <p className="mt-1 text-xs text-blue-100">Dynamic periods as columns with grouped metric rows, subtotals, totals, and drill-down data.</p>
+      <section className="lux-panel overflow-hidden rounded-2xl">
+        <div className="border-b border-border/70 bg-card/95 px-5 py-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-[0_14px_30px_-18px_rgba(127,18,49,0.55)]">
+                <BarChart3 className="h-4.5 w-4.5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-foreground">Periodic analytics</h2>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Grouped period intelligence with subtotals, totals, and drill-down data.</p>
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[180px,190px,180px,220px]">
               <SelectControl label="Period" value={periodType} onChange={(value) => setPeriodType(value as PeriodType)} options={PERIOD_OPTIONS.map((option) => ({ label: option.label, value: option.key }))} />
               <SelectControl label="Dimension" value={dimensionKey} onChange={(value) => setDimensionKey(value as GroupableLeadKey)} options={DIMENSION_KEYS.map((option) => ({ label: option.label, value: option.key }))} />
               <SelectControl label="Metric" value={metric} onChange={(value) => setMetric(value as MetricKey)} options={METRIC_OPTIONS.map((option) => ({ label: option.label, value: option.key }))} />
               <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">Find row</label>
+                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Find row</label>
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-600" />
-                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search dimension" className="h-10 rounded-xl border-white bg-white pl-9 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search dimension" className="lux-control h-10 rounded-xl pl-9 text-sm font-semibold shadow-sm placeholder:text-muted-foreground" />
                 </div>
               </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-4">
             {METRIC_OPTIONS.map((option) => (
               <button
                 key={option.key}
                 onClick={() => setMetric(option.key)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${metric === option.key ? 'bg-white text-blue-700 shadow-sm' : 'border border-white/30 bg-white/10 text-white hover:bg-white/20'}`}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${metric === option.key ? 'border-slate-700 bg-slate-900 text-white shadow-sm dark:border-slate-500 dark:bg-slate-100 dark:text-slate-950' : 'border-border/70 bg-background/80 text-foreground hover:border-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40'}`}
               >
                 {option.label}
               </button>
@@ -246,7 +248,7 @@ export function PeriodicAnalytics({ leads }: Props) {
           </div>
         </div>
 
-        <div className="grid gap-3 border-b border-border bg-muted/55 p-4 md:grid-cols-4">
+        <div className="grid gap-3 border-b border-border bg-muted/30 p-4 md:grid-cols-4">
           <KpiCard icon={Sigma} label="Filtered leads" value={formatNumber(totalRow.total.leadsCount)} />
           <KpiCard icon={Layers3} label="Rows" value={formatNumber(rows.length)} />
           <KpiCard icon={IndianRupee} label="Revenue" value={formatCurrency(totalRow.total.revenue)} />
@@ -255,14 +257,14 @@ export function PeriodicAnalytics({ leads }: Props) {
 
         <div className="overflow-auto lead-scroll-area">
           <table className="min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-0 z-10 bg-card">
+            <thead className="sticky top-0 z-10 dashboard-header-panel">
               <tr>
-                <th className="sticky left-0 z-20 min-w-[280px] border-b border-r border-border bg-card px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <th className="sticky left-0 z-20 min-w-[280px] border-b border-r border-white/10 bg-[hsl(var(--dashboard-header))] px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-200">
                   {DIMENSION_KEYS.find((option) => option.key === dimensionKey)?.label}
                 </th>
-                <th className="min-w-[116px] border-b border-border px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</th>
+                <th className="min-w-[116px] border-b border-white/10 px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-200">Total</th>
                 {buckets.map((bucket) => (
-                  <th key={bucket.key} className="min-w-[132px] border-b border-border px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{bucket.label}</th>
+                  <th key={bucket.key} className="min-w-[132px] border-b border-white/10 px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-200">{bucket.label}</th>
                 ))}
               </tr>
             </thead>
@@ -302,10 +304,10 @@ export function PeriodicAnalytics({ leads }: Props) {
           </DialogHeader>
           <div className="max-h-[66vh] overflow-auto lead-scroll-area">
             <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-muted">
+              <thead className="sticky top-0 dashboard-header-panel">
                 <tr>
                   {['Lead', 'Created', 'Converted', 'Stage', 'Source', 'Center', 'Associate', 'Revenue'].map((label) => (
-                    <th key={label} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</th>
+                    <th key={label} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-200">{label}</th>
                   ))}
                 </tr>
               </thead>
@@ -342,8 +344,8 @@ function getStageSubtotal(label: string): string {
 function SelectControl({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ label: string; value: string }> }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">{label}</label>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-xl border border-white bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm">
+      <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</label>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="lux-control h-10 w-full rounded-xl px-3 text-sm font-semibold shadow-sm">
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </div>
@@ -352,9 +354,11 @@ function SelectControl({ label, value, onChange, options }: { label: string; val
 
 function KpiCard({ icon: Icon, label, value }: { icon: typeof BarChart3; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div className="lux-sidebar-stat rounded-xl p-4">
       <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <Icon className="h-4 w-4 text-foreground" />
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+          <Icon className="h-4 w-4" />
+        </span>
         {label}
       </div>
       <p className="font-mono-data text-2xl font-bold text-foreground">{value}</p>
@@ -373,17 +377,17 @@ function PeriodicRow({ row, buckets, metric, isTotal, isSubtotal, expanded, chil
   onToggle?: () => void;
   onDrilldown: (drilldown: { title: string; leads: Lead[] }) => void;
 }) {
-  const labelClass = isTotal ? 'font-bold text-white' : isSubtotal ? 'font-bold text-foreground' : 'pl-8 font-medium text-foreground/80';
-  const bgClass = isTotal ? 'bg-blue-700 text-white dark:bg-blue-950' : isSubtotal ? 'bg-primary/10' : 'bg-card';
+  const labelClass = isTotal ? 'font-bold text-white' : isSubtotal ? 'font-semibold text-foreground' : 'pl-8 font-medium text-foreground/80';
+  const bgClass = isTotal ? 'dashboard-header-panel' : isSubtotal ? 'bg-card hover:bg-sky-50 dark:hover:bg-sky-950/40' : 'lux-row';
   const totalValue = formatMetricValue(getMetricValue(row.total, metric), metric);
 
   return (
-    <tr className={`${bgClass} border-t border-slate-200`}>
+    <tr className={`${bgClass} border-t border-border/70`}>
       <td className={`sticky left-0 z-10 border-r border-border px-4 py-3 ${bgClass}`}>
         <button type="button" onClick={isSubtotal ? onToggle : undefined} className={`flex w-full items-center gap-2 text-left text-sm ${labelClass}`}>
           {isSubtotal ? (expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : null}
           <span className="truncate">{row.label}</span>
-          {isSubtotal && <span className="ml-auto rounded-full bg-background px-2 py-0.5 text-[10px] text-muted-foreground">{childCount}</span>}
+          {isSubtotal && <span className="ml-auto rounded-full border border-border/70 bg-background px-2 py-0.5 text-[10px] text-muted-foreground">{childCount}</span>}
         </button>
       </td>
       <MetricCell value={totalValue} stats={row.total} title={`${row.label} · Total`} onDrilldown={onDrilldown} strong={isTotal || isSubtotal} dark={isTotal} />
@@ -402,7 +406,7 @@ function MetricCell({ value, stats, title, onDrilldown, strong, dark }: { value:
         type="button"
         disabled={stats.leadsCount === 0}
         onClick={() => onDrilldown({ title, leads: stats.leads })}
-        className={`rounded-lg px-2 py-1 font-mono-data text-sm ${strong ? 'font-bold' : 'font-semibold'} ${dark ? 'text-white hover:bg-white/10' : stats.leadsCount > 0 ? 'text-foreground hover:bg-primary/10' : 'text-muted-foreground/50'}`}
+        className={`rounded-lg px-2 py-1 font-mono-data text-sm ${strong ? 'font-bold' : 'font-semibold'} ${dark ? 'text-white hover:bg-white/10' : stats.leadsCount > 0 ? 'text-foreground hover:bg-sky-50 dark:hover:bg-sky-950/40' : 'text-muted-foreground/50'}`}
       >
         {value}
       </button>

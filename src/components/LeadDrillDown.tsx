@@ -117,10 +117,10 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-      className="fixed right-0 top-0 z-[140] h-screen w-full overflow-y-auto border-l border-slate-300/70 bg-white shadow-elevated md:w-[640px]"
+      className="fixed right-0 top-0 z-[140] h-screen w-full overflow-y-auto border-l border-border bg-background shadow-elevated md:w-[640px]"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[linear-gradient(135deg,#1d4ed8,#2563eb,#06b6d4)] p-5 text-white">
+      <div className="sticky top-0 z-10 dashboard-header-panel p-5 text-white">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold">{draft.fullName}</h2>
@@ -148,11 +148,11 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
         </div>
       </div>
 
-      <div className="space-y-6 bg-slate-50 p-5">
+      <div className="space-y-6 bg-background p-5">
         {/* Status Badges */}
         <div className="flex flex-wrap gap-2">
           {[draft.status, draft.stageName, draft.sourceName, draft.conversionStatus].filter(Boolean).map((label) => (
-            <span key={label} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+            <span key={label} className="rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground">
               {label}
             </span>
           ))}
@@ -170,7 +170,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
           <div className="flex items-center gap-2 flex-wrap">
             {conversionPath.map((step, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">{step}</span>
+                <span className="rounded-xl border border-border bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground">{step}</span>
                 {i < conversionPath.length - 1 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
               </div>
             ))}
@@ -181,7 +181,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
           <Section title="Editable lead fields">
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-300 bg-white p-4">
+                <div className="rounded-2xl border border-border bg-card/80 p-4">
                   <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Identity</p>
                   <div className="grid grid-cols-1 gap-3">
                     <FormField label="Full name">
@@ -205,7 +205,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-300 bg-white p-4">
+                <div className="rounded-2xl border border-border bg-card/80 p-4">
                   <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
                   <div className="grid grid-cols-1 gap-3">
                     <FormField label="Source">
@@ -233,24 +233,24 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-300 bg-white p-4">
+              <div className="rounded-2xl border border-border bg-card/80 p-4">
                 <FormField label="Remarks">
                   <textarea
                     value={draft.remarks}
                     onChange={(event) => setField('remarks', event.target.value)}
-                    className="min-h-[110px] w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-300"
+                    className="min-h-[110px] w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </FormField>
               </div>
 
-              <div className="rounded-2xl border border-slate-300 bg-white p-4">
+              <div className="rounded-2xl border border-border bg-card/80 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground">Follow-up planner</p>
                   <p className="text-[11px] text-muted-foreground">Grid layout</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {draft.followUps.map((followUp) => (
-                    <div key={followUp.index} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                    <div key={followUp.index} className="rounded-2xl border border-border bg-background/65 p-3 shadow-sm">
                       <div className="mb-3 flex items-center justify-between gap-2">
                         <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">FU {followUp.index}</span>
                         <span className="text-[10px] text-muted-foreground">Schedule + notes</span>
@@ -265,10 +265,10 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={resetDraft} className="rounded-xl border-slate-300 bg-white text-slate-800 hover:bg-slate-100">
+                <Button type="button" variant="outline" onClick={resetDraft} className="rounded-xl border-border bg-background/80 text-foreground hover:bg-muted">
                   <RotateCcw className="h-4 w-4 mr-1.5" /> Reset changes
                 </Button>
-                <Button type="button" onClick={handleSave} disabled={updateLead.isPending} className="rounded-xl gap-1.5 bg-blue-600 text-white hover:bg-blue-700">
+                <Button type="button" onClick={handleSave} disabled={updateLead.isPending} className="rounded-xl gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
                   <Save className="h-4 w-4" /> {updateLead.isPending ? 'Saving…' : 'Save to Momence'}
                 </Button>
               </div>
@@ -300,8 +300,8 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
         <Section title="Remarks">
           <p className={`rounded-xl border p-3.5 text-sm leading-relaxed ${
             !draft.remarks || draft.remarks === '-'
-              ? 'border-slate-300 bg-slate-100 italic text-slate-500'
-              : 'border-slate-200 bg-white text-slate-900'
+              ? 'border-border bg-muted/55 italic text-muted-foreground'
+              : 'border-border bg-card/80 text-foreground'
           }`}>
             {draft.remarks && draft.remarks !== '-' ? draft.remarks : 'No remarks added'}
           </p>
@@ -318,15 +318,15 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
               const hasComment = !!fu.comment && fu.comment !== '-';
               return (
                 <div key={fu.index} className={`rounded-xl border p-3.5 text-sm ${
-                  !hasDate ? 'border-slate-200 bg-slate-100 text-slate-400' :
-                  !hasComment ? 'border-slate-300 bg-white' :
-                  'border-slate-200 bg-white'
+                  !hasDate ? 'border-border bg-muted/55 text-muted-foreground' :
+                  !hasComment ? 'border-border bg-card/80' :
+                  'border-border bg-card/80'
                 }`}>
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="font-semibold text-foreground text-xs">Follow Up {fu.index}</span>
                     {hasDate && <span className="font-mono text-[11px] text-muted-foreground">{fu.date}</span>}
                   </div>
-                  <p className={`text-xs leading-relaxed ${!hasComment && hasDate ? 'italic text-slate-500' : 'text-muted-foreground'}`}>
+                  <p className={`text-xs leading-relaxed ${!hasComment && hasDate ? 'italic text-muted-foreground' : 'text-muted-foreground'}`}>
                     {hasComment ? fu.comment : hasDate ? 'Missing feedback' : 'Not scheduled'}
                   </p>
                 </div>
@@ -364,9 +364,9 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-card">
-      <div className="border-b border-slate-200 px-4 py-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{title}</h3>
+    <section className="lux-panel overflow-hidden rounded-2xl">
+      <div className="border-b border-border px-4 py-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
       </div>
       <div className="p-4">
         {children}
@@ -377,18 +377,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MetricCard({ label, value, highlight, highlightDestructive }: { label: string; value: string; highlight?: boolean; highlightDestructive?: boolean }) {
   return (
-    <div className={`rounded-xl border p-3.5 ${highlight ? 'border-blue-200 bg-blue-600 text-white' : 'border-slate-200 bg-white'}`}>
-      <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider ${highlight ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
-      <p className={`font-mono text-lg font-bold ${highlight ? 'text-white' : 'text-slate-900'}`}>{value}</p>
+    <div className={`rounded-xl border p-3.5 ${highlight ? 'border-primary/40 bg-primary/20 text-foreground' : 'border-border bg-card/80'}`}>
+      <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider ${highlight ? 'text-primary' : 'text-muted-foreground'}`}>{label}</p>
+      <p className="font-mono text-lg font-bold text-foreground">{value}</p>
     </div>
   );
 }
 
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-200 py-2.5 last:border-0">
+    <div className="flex items-center justify-between border-b border-border py-2.5 last:border-0">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`text-sm text-slate-900 ${mono ? 'font-mono' : ''}`}>{value || '—'}</span>
+      <span className={`text-sm text-foreground ${mono ? 'font-mono' : ''}`}>{value || '—'}</span>
     </div>
   );
 }
@@ -409,7 +409,7 @@ function SelectField({ value, options, onChange }: { value: string; options: str
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-300"
+      className="h-10 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/30"
     >
       {uniqueOptions.map((option) => (
         <option key={option} value={option}>{option}</option>

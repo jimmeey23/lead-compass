@@ -37,7 +37,7 @@ function ThemeToggle() {
       className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 px-3 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {isDark ? <Sun className="h-3.5 w-3.5 text-sky-300" /> : <Moon className="h-3.5 w-3.5 text-blue-700" />}
+      {isDark ? <Sun className="h-3.5 w-3.5 text-rose-200" /> : <Moon className="h-3.5 w-3.5 text-rose-900" />}
       <span className="hidden md:inline">{isDark ? 'Light' : 'Dark'}</span>
     </Button>
   );
@@ -109,7 +109,7 @@ const Index = () => {
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_50px_-44px_rgba(15,23,42,0.34)] backdrop-blur-2xl dark:bg-background/80 dark:shadow-[0_18px_60px_-42px_rgba(0,0,0,0.92)]">
         <div className={`${isTableWorkspace ? 'w-full px-4 md:px-6' : 'mx-auto max-w-[1680px] px-4 md:px-6'} flex min-h-16 flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:py-0`}>
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1d4ed8,#06b6d4)] shadow-[0_16px_30px_-18px_rgba(37,99,235,0.75)] ring-1 ring-white/60 dark:ring-sky-300/20">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#7f1231,#9f1d4c,#6d4bc4)] shadow-[0_16px_30px_-18px_rgba(127,18,49,0.72)] ring-1 ring-white/70 dark:ring-rose-200/20">
                 <Zap className="h-4.5 w-4.5 text-white" />
               </div>
               <div className="min-w-0">

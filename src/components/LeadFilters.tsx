@@ -66,21 +66,21 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
   return (
     <div className="glass-strong overflow-hidden rounded-[22px] shadow-glass">
       {/* Search Row */}
-      <div className="flex items-center gap-3 border-b border-border/70 bg-card/70 p-4">
+      <div className="dashboard-header-panel flex items-center gap-3 border-b border-white/10 p-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
           <Input
             placeholder="Search leads by name, email, phone, or ID..."
             value={filters.search}
             onChange={(e) => update('search', e.target.value)}
-            className="h-10 rounded-xl border-border/70 bg-background/80 pl-10 text-sm focus:ring-2 focus:ring-primary/20"
+            className="h-10 rounded-xl border-white/20 bg-white/10 pl-10 text-sm text-white placeholder:text-slate-300 focus:ring-2 focus:ring-sky-300/30"
           />
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setQuickExpanded(!quickExpanded)}
-          className="h-10 gap-2 rounded-xl border-border/70 bg-background/70 px-4 text-sm transition-all hover:border-primary/30 hover:bg-primary/10"
+          className="h-10 gap-2 rounded-xl border-white/20 bg-white/10 px-4 text-sm text-white transition-all hover:bg-white/15"
         >
           <Calendar className="h-4 w-4" />
           Quick Filters
@@ -90,14 +90,14 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
           variant="outline"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="h-10 gap-2 rounded-xl border-border/70 bg-background/70 px-4 text-sm transition-all hover:border-primary/30 hover:bg-primary/10"
+          className="h-10 gap-2 rounded-xl border-white/20 bg-white/10 px-4 text-sm text-white transition-all hover:bg-white/15"
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filters
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </Button>
         {activeCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={reset} className="h-10 gap-1.5 rounded-xl text-sm text-accent-overdue hover:bg-accent-overdue/10 hover:text-accent-overdue">
+          <Button variant="ghost" size="sm" onClick={reset} className="h-10 gap-1.5 rounded-xl text-sm text-white hover:bg-white/15 hover:text-white">
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
         )}
@@ -146,8 +146,8 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                   onClick={() => update('center', 'all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     filters.center === 'all'
-                      ? 'gradient-primary text-primary-foreground shadow-sm'
-                      : 'bg-background/60 text-muted-foreground hover:bg-primary/5 hover:text-foreground border border-border/40'
+                      ? 'dashboard-header-panel shadow-sm'
+                      : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                   }`}
                 >All Locations</button>
                 {centers.map(c => (
@@ -156,8 +156,8 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                     onClick={() => update('center', filters.center === c ? 'all' : c)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       filters.center === c
-                        ? 'gradient-primary text-primary-foreground shadow-sm'
-                        : 'bg-background/60 text-muted-foreground hover:bg-primary/5 hover:text-foreground border border-border/40'
+                        ? 'dashboard-header-panel shadow-sm'
+                        : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                     }`}
                   >
                     {c}
@@ -172,8 +172,8 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                   onClick={() => update('associate', 'all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     filters.associate === 'all'
-                      ? 'gradient-primary text-primary-foreground shadow-sm'
-                      : 'bg-background/60 text-muted-foreground hover:bg-primary/5 hover:text-foreground border border-border/40'
+                      ? 'dashboard-header-panel shadow-sm'
+                      : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                   }`}
                 >All Associates</button>
                 {associates.map(a => (
@@ -182,8 +182,8 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                     onClick={() => update('associate', filters.associate === a ? 'all' : a)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       filters.associate === a
-                        ? 'gradient-primary text-primary-foreground shadow-sm'
-                        : 'bg-background/60 text-muted-foreground hover:bg-primary/5 hover:text-foreground border border-border/40'
+                        ? 'dashboard-header-panel shadow-sm'
+                        : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                     }`}
                   >
                     {a}
@@ -240,7 +240,7 @@ function DatePresetGroup({ label, value, onChange }: { label: string; value: Dat
   return (
     <div className="rounded-2xl border border-border/50 bg-background/50 p-3 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
-        <Calendar className="h-3.5 w-3.5 text-primary" />
+        <Calendar className="h-3.5 w-3.5 text-sky-700 dark:text-sky-300" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -250,8 +250,8 @@ function DatePresetGroup({ label, value, onChange }: { label: string; value: Dat
             onClick={() => onChange(preset.key)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
               value === preset.key
-                ? 'gradient-primary text-primary-foreground shadow-sm'
-                : 'border border-border/40 bg-background/70 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
+                ? 'dashboard-header-panel shadow-sm'
+                : 'border border-border/40 bg-background/70 text-muted-foreground hover:border-sky-300 hover:bg-sky-50 hover:text-foreground dark:hover:bg-sky-950/40'
             }`}
           >
             {preset.label}
