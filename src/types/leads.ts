@@ -84,10 +84,10 @@ export interface LeadOptionSets {
 export type DatePreset = 'all' | '7days' | 'lastWeek' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'lastQuarter' | 'thisYear' | 'lastYear' | 'custom';
 
 export interface FilterState {
-  associate: string;
+  associate: string[];
   status: string[];
   stageName: string[];
-  center: string;
+  center: string[];
   sourceName: string[];
   channel: string[];
   conversionStatus: string[];
@@ -102,10 +102,10 @@ export interface FilterState {
 }
 
 export const defaultFilters: FilterState = {
-  associate: 'all',
+  associate: [],
   status: [],
   stageName: [],
-  center: 'all',
+  center: [],
   sourceName: [],
   channel: [],
   conversionStatus: [],

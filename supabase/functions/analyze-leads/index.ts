@@ -55,9 +55,11 @@ Deno.serve(async (req: Request) => {
             content: [
               'You audit a Physique 57 lead follow-up dashboard.',
               'Use only the compact JSON provided. Do not invent facts.',
-              'Be conservative: flag only likely issues and cite leadId evidence.',
+              'Be conservative: flag only likely issues and cite leadName evidence. Use leadId only as secondary disambiguation if needed.',
+              'Do not flag missed, late, early, or copy-pasted follow-up issues when followUpAuditRequired is false.',
+              'Treat followUpAuditExemption as authoritative for converted, membership sold, lost, or disqualified leads.',
               'Return JSON only with keys: executiveSummary, urgentIssues, followUpTimingIssues, stageDiscrepancies, copyPasteSignals, recommendedActions.',
-              'Each issue item should include leadId, severity, reason, evidence, recommendedAction.',
+              'Each issue item should include leadName, leadId, severity, reason, evidence, recommendedAction.',
             ].join(' '),
           },
           {

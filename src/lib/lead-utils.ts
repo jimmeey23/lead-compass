@@ -447,12 +447,13 @@ export function enrichLeadsWithSalesConversions(leads: Lead[], salesRows: string
 export function applyLeadFilters(leads: Lead[], filters: FilterState): Lead[] {
   const createdDateRange = getDateRange(filters.datePreset, filters.customDateFrom, filters.customDateTo);
   const convertedDateRange = getDateRange(filters.convertedDatePreset, filters.convertedDateFrom, filters.convertedDateTo);
+  const selectedCenters = filters.center.map((center) => cleanLooseText(center).toLowerCase());
 
   return leads.filter((lead) => {
-    if (filters.associate !== 'all' && lead.associate !== filters.associate) return false;
+    if (filters.associate.length > 0 && !filters.associate.includes(lead.associate)) return false;
     if (filters.status.length > 0 && !filters.status.includes(lead.status)) return false;
     if (filters.stageName.length > 0 && !filters.stageName.includes(lead.stageName)) return false;
-    if (filters.center !== 'all' && cleanLooseText(lead.center).toLowerCase() !== cleanLooseText(filters.center).toLowerCase()) return false;
+    if (selectedCenters.length > 0 && !selectedCenters.includes(cleanLooseText(lead.center).toLowerCase())) return false;
     if (filters.sourceName.length > 0 && !filters.sourceName.includes(lead.sourceName)) return false;
     if (filters.channel.length > 0 && !filters.channel.includes(lead.channel)) return false;
     if (filters.conversionStatus.length > 0 && !filters.conversionStatus.includes(lead.conversionStatus)) return false;

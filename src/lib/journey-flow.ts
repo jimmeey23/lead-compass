@@ -51,6 +51,8 @@ const STAGE_DEFS: Array<{ key: JourneyStageKey; label: string }> = [
   { key: 'converted', label: 'Converted' },
 ];
 
+const STAGE_ORDER: JourneyStageKey[] = ['source', 'newLead', 'contacted', 'trialScheduled', 'trialCompleted', 'converted'];
+
 function includesAny(value: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(value));
 }
@@ -110,6 +112,30 @@ function countByPredicate(leads: Lead[], predicate: (lead: Lead) => boolean): nu
   return leads.reduce((count, lead) => count + (predicate(lead) ? 1 : 0), 0);
 }
 
+export function hasReachedJourneyStage(lead: Lead, stageKey: JourneyStageKey): boolean {
+  if (stageKey === 'source') return true;
+  const reachedIndex = STAGE_ORDER.indexOf(getReachedStage(lead));
+  const stageIndex = STAGE_ORDER.indexOf(stageKey);
+  return stageIndex > 0 && reachedIndex >= stageIndex;
+}
+
+export function getJourneyStageLeads(leads: Lead[], stageKey: JourneyStageKey): Lead[] {
+  return leads.filter((lead) => hasReachedJourneyStage(lead, stageKey));
+}
+
+export function getJourneyBranchLeads(leads: Lead[], branchKey: JourneyBranchKey): Lead[] {
+  const predicates: Record<JourneyBranchKey, (lead: Lead) => boolean> = {
+    noResponse: isNoResponse,
+    trialNotAttended: isTrialNotAttended,
+    lost: isLost,
+  };
+  return leads.filter(predicates[branchKey]);
+}
+
+export function getJourneySourceLeads(leads: Lead[], sourceLabel: string): Lead[] {
+  return leads.filter((lead) => (cleanLooseText(lead.sourceName) || 'Unknown Source') === sourceLabel);
+}
+
 export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
   const totalLeads = leads.length;
   const rawCounts: Record<JourneyStageKey, number> = {
@@ -121,12 +147,10 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     converted: 0,
   };
 
-  const stageOrder: JourneyStageKey[] = ['source', 'newLead', 'contacted', 'trialScheduled', 'trialCompleted', 'converted'];
-
   for (const lead of leads) {
     const reachedStage = getReachedStage(lead);
-    const reachedIndex = stageOrder.indexOf(reachedStage);
-    for (const stage of stageOrder.slice(1, reachedIndex + 1)) {
+    const reachedIndex = STAGE_ORDER.indexOf(reachedStage);
+    for (const stage of STAGE_ORDER.slice(1, reachedIndex + 1)) {
       rawCounts[stage] += 1;
     }
   }

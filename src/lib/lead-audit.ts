@@ -30,6 +30,8 @@ export interface LeadAuditRecord {
   sourceName: string;
   associate: string;
   remarks: string;
+  followUpAuditRequired: boolean;
+  followUpAuditExemption: string;
   followUps: Array<Pick<FollowUp, 'index' | 'date' | 'comment'>>;
 }
 
@@ -44,6 +46,7 @@ export interface LeadAuditPayload {
   summary: {
     activeLeads: number;
     disqualifiedOrLostLeads: number;
+    convertedOrSoldLeads: number;
     deterministicIssueCount: number;
   };
   timelineGuidance: string[];
@@ -98,6 +101,20 @@ function isDisqualifiedOrLost(lead: Lead): boolean {
   return /lost|not interested|disqualified|invalid|dead|cancel|dropped/.test(normalizedLeadText(lead));
 }
 
+function isConvertedOrMembershipSold(lead: Lead): boolean {
+  return /converted|membership sold|sold/.test(normalizedLeadText(lead));
+}
+
+function getFollowUpAuditExemption(lead: Lead): string {
+  if (isDisqualifiedOrLost(lead)) return 'Lead is disqualified, lost, or not interested.';
+  if (isConvertedOrMembershipSold(lead)) return 'Lead is converted or stage is membership sold.';
+  return '';
+}
+
+function requiresFollowUpAudit(lead: Lead): boolean {
+  return !getFollowUpAuditExemption(lead);
+}
+
 function hasMeaningfulDate(followUp: FollowUp): boolean {
   return Boolean(cleanLooseText(followUp.date)) && cleanLooseText(followUp.date) !== '-';
 }
@@ -114,6 +131,8 @@ function allLeadComments(lead: Lead): string {
 }
 
 function buildRecord(lead: Lead): LeadAuditRecord {
+  const exemption = getFollowUpAuditExemption(lead);
+
   return {
     id: lead.id,
     name: lead.fullName,
@@ -125,6 +144,8 @@ function buildRecord(lead: Lead): LeadAuditRecord {
     sourceName: lead.sourceName,
     associate: lead.associate,
     remarks: cleanLooseText(lead.remarks).slice(0, 280),
+    followUpAuditRequired: !exemption,
+    followUpAuditExemption: exemption,
     followUps: lead.followUps.map((followUp) => ({
       index: followUp.index,
       date: cleanLooseText(followUp.date),
@@ -144,14 +165,14 @@ function addIssue(issues: LeadAuditIssue[], lead: Lead, issue: Omit<LeadAuditIss
 function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
   const issues: LeadAuditIssue[] = [];
   const createdAt = parseFlexibleDate(lead.createdAt);
-  const active = !isDisqualifiedOrLost(lead);
+  const shouldAuditFollowUps = requiresFollowUpAudit(lead);
   const comments = allLeadComments(lead);
 
   if (!createdAt) {
     return issues;
   }
 
-  if (active && !/welcome|intro|initial message|whatsapp|dm|message sent/.test(comments)) {
+  if (shouldAuditFollowUps && !/welcome|intro|initial message|whatsapp|dm|message sent/.test(comments)) {
     addIssue(issues, lead, {
       severity: 'low',
       category: 'missing_welcome_message',
@@ -160,7 +181,7 @@ function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
     });
   }
 
-  if (active && !/call|called|phone|spoke|connected|ring/.test(comments)) {
+  if (shouldAuditFollowUps && !/call|called|phone|spoke|connected|ring/.test(comments)) {
     addIssue(issues, lead, {
       severity: 'medium',
       category: 'missing_phone_call',
@@ -171,7 +192,7 @@ function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
 
   for (const followUp of lead.followUps) {
     const expected = expectedFollowUpDays[followUp.index];
-    if (!expected || !active) continue;
+    if (!expected || !shouldAuditFollowUps) continue;
 
     if (!hasMeaningfulDate(followUp) || !hasMeaningfulComment(followUp)) {
       addIssue(issues, lead, {
@@ -204,19 +225,21 @@ function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
     }
   }
 
-  const normalizedComments = lead.followUps
-    .filter(hasMeaningfulComment)
-    .map((followUp) => ({ index: followUp.index, normalized: normalizedComment(followUp.comment) }))
-    .filter((item) => item.normalized.length >= 12);
-  const repeated = normalizedComments.filter((item, _, all) => all.some((other) => other.index !== item.index && other.normalized === item.normalized));
+  if (shouldAuditFollowUps) {
+    const normalizedComments = lead.followUps
+      .filter(hasMeaningfulComment)
+      .map((followUp) => ({ index: followUp.index, normalized: normalizedComment(followUp.comment) }))
+      .filter((item) => item.normalized.length >= 12);
+    const repeated = normalizedComments.filter((item, _, all) => all.some((other) => other.index !== item.index && other.normalized === item.normalized));
 
-  if (repeated.length >= 2) {
-    addIssue(issues, lead, {
-      severity: 'medium',
-      category: 'copy_paste_follow_up',
-      detail: 'Multiple follow ups use identical or near-identical comments.',
-      evidence: `Repeated follow-up indexes: ${Array.from(new Set(repeated.map((item) => item.index))).join(', ')}.`,
-    });
+    if (repeated.length >= 2) {
+      addIssue(issues, lead, {
+        severity: 'medium',
+        category: 'copy_paste_follow_up',
+        detail: 'Multiple follow ups use identical or near-identical comments.',
+        evidence: `Repeated follow-up indexes: ${Array.from(new Set(repeated.map((item) => item.index))).join(', ')}.`,
+      });
+    }
   }
 
   if (/trial completed|converted|sold/.test(normalizedLeadText(lead)) && /no answer|not connected|did not answer|no response/.test(comments)) {
@@ -249,6 +272,7 @@ export function buildLeadAuditPayload(leads: Lead[], referenceDate = new Date())
 
   const issues = windowedLeads.flatMap(detectLeadIssues);
   const activeLeads = windowedLeads.filter((lead) => !isDisqualifiedOrLost(lead)).length;
+  const convertedOrSoldLeads = windowedLeads.filter(isConvertedOrMembershipSold).length;
 
   return {
     analysisWindow: {
@@ -261,6 +285,7 @@ export function buildLeadAuditPayload(leads: Lead[], referenceDate = new Date())
     summary: {
       activeLeads,
       disqualifiedOrLostLeads: windowedLeads.length - activeLeads,
+      convertedOrSoldLeads,
       deterministicIssueCount: issues.length,
     },
     timelineGuidance: [

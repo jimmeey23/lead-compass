@@ -50,14 +50,21 @@ describe('lead audit payload', () => {
     expect(payload.records.map((record) => record.id)).toEqual(['recent']);
   });
 
-  it('flags active leads missing required follow ups and ignores lost leads', () => {
+  it('flags active leads missing required follow ups and ignores lost, converted, and membership sold leads', () => {
     const payload = buildLeadAuditPayload([
       lead({ id: 'active', fullName: 'Active Lead', createdAt: '2026-05-10' }),
       lead({ id: 'lost', fullName: 'Lost Lead', createdAt: '2026-05-10', status: 'Not Interested' }),
+      lead({ id: 'converted', fullName: 'Converted Lead', createdAt: '2026-05-10', conversionStatus: 'Converted' }),
+      lead({ id: 'sold', fullName: 'Sold Lead', createdAt: '2026-05-10', stageName: 'Membership Sold' }),
     ], new Date('2026-05-17T00:00:00'));
 
     expect(payload.deterministicIssues.filter((issue) => issue.leadId === 'active' && issue.category === 'missing_follow_up')).toHaveLength(4);
     expect(payload.deterministicIssues.some((issue) => issue.leadId === 'lost')).toBe(false);
+    expect(payload.deterministicIssues.some((issue) => issue.leadId === 'converted')).toBe(false);
+    expect(payload.deterministicIssues.some((issue) => issue.leadId === 'sold')).toBe(false);
+    expect(payload.summary.convertedOrSoldLeads).toBe(2);
+    expect(payload.records.find((record) => record.id === 'converted')?.followUpAuditRequired).toBe(false);
+    expect(payload.records.find((record) => record.id === 'sold')?.followUpAuditExemption).toContain('membership sold');
   });
 
   it('flags delayed and repeated follow up comments', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildJourneyFlow } from '@/lib/journey-flow';
+import { buildJourneyFlow, getJourneyBranchLeads, getJourneySourceLeads, getJourneyStageLeads } from '@/lib/journey-flow';
 import type { Lead } from '@/types/leads';
 
 const lead = (overrides: Partial<Lead>): Lead => ({
@@ -79,5 +79,26 @@ describe('journey flow', () => {
       { label: 'Walk-in', count: 1, percentage: 25 },
     ]);
     expect(result.insights.topSource?.label).toBe('Instagram');
+  });
+
+  it('returns drilldown leads using the same cumulative journey rules', () => {
+    const leads = [
+      lead({ id: 'new', stageName: 'New Lead', sourceName: '' }),
+      lead({ id: 'contacted', stageName: 'Contacted', sourceName: 'Instagram' }),
+      lead({ id: 'scheduled', stageName: 'Trial Scheduled', trialStatus: 'Scheduled', sourceName: 'Instagram' }),
+      lead({ id: 'completed', stageName: 'Trial Completed', trialStatus: 'Completed', sourceName: 'Walk-in' }),
+      lead({ id: 'converted', conversionStatus: 'Converted', convertedAt: '2026-05-12', sourceName: 'Walk-in' }),
+      lead({ id: 'no-response', stageName: 'No Response', sourceName: 'Referral' }),
+    ];
+
+    expect(getJourneyStageLeads(leads, 'contacted').map((item) => item.id)).toEqual([
+      'contacted',
+      'scheduled',
+      'completed',
+      'converted',
+      'no-response',
+    ]);
+    expect(getJourneyBranchLeads(leads, 'noResponse').map((item) => item.id)).toEqual(['no-response']);
+    expect(getJourneySourceLeads(leads, 'Unknown Source').map((item) => item.id)).toEqual(['new']);
   });
 });

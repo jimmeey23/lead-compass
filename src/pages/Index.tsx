@@ -12,9 +12,11 @@ import { JourneyFlow } from '@/components/JourneyFlow';
 import { PeriodicAnalytics } from '@/components/PeriodicAnalytics';
 import { defaultFilters } from '@/types/leads';
 import type { FilterState, ViewMode, Lead } from '@/types/leads';
-import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun, Route, BrainCircuit } from 'lucide-react';
+import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun, Route, BrainCircuit, AlertTriangle, ClipboardList, CheckCircle2, Copy, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { buildLeadAuditPayload } from '@/lib/lead-audit';
@@ -79,28 +81,197 @@ function AuditLocalPreview({ payload }: { payload: ReturnType<typeof buildLeadAu
   );
 }
 
+const auditSectionMeta: Record<string, { label: string; tone: string }> = {
+  urgentIssues: { label: 'Urgent issues', tone: 'border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100' },
+  followUpTimingIssues: { label: 'Follow-up timing', tone: 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100' },
+  stageDiscrepancies: { label: 'Stage discrepancies', tone: 'border-sky-200 bg-sky-50/80 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/25 dark:text-sky-100' },
+  copyPasteSignals: { label: 'Copy-paste signals', tone: 'border-violet-200 bg-violet-50/80 text-violet-900 dark:border-violet-900/60 dark:bg-violet-950/25 dark:text-violet-100' },
+};
+
+type AuditIssueRow = {
+  category: string;
+  leadLabel: string;
+  severity: string;
+  reason: string;
+  evidence: string;
+  recommendedAction: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null;
+}
+
+function formatAuditLabel(value: string): string {
+  return value.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase());
+}
+
+function auditText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(auditText).filter(Boolean).join(', ');
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return ['reason', 'summary', 'detail', 'message', 'recommendedAction']
+      .map((key) => auditText(record[key]))
+      .find(Boolean) ?? '';
+  }
+  return '';
+}
+
+function getAuditIssueRows(data: Record<string, unknown>, sections: string[]): AuditIssueRow[] {
+  return sections.flatMap((section) => {
+    const value = data[section];
+    if (!Array.isArray(value)) return [];
+
+    return value.slice(0, 12).map((item): AuditIssueRow => {
+      const record = asRecord(item);
+      return {
+        category: auditSectionMeta[section]?.label ?? formatAuditLabel(section),
+        leadLabel: auditText(record?.leadName) || auditText(record?.lead) || auditText(record?.name) || auditText(record?.leadId) || 'Multiple',
+        severity: auditText(record?.severity) || 'Review',
+        reason: auditText(record?.reason) || auditText(record?.detail) || auditText(item),
+        evidence: auditText(record?.evidence),
+        recommendedAction: auditText(record?.recommendedAction),
+      };
+    });
+  }).filter((row) => row.reason || row.evidence || row.recommendedAction);
+}
+
+function severityBadgeVariant(severity: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  return severity.toLowerCase().includes('high') || severity.toLowerCase().includes('urgent') ? 'destructive' : 'secondary';
+}
+
+function copyAuditText(label: string, text: string) {
+  if (!text.trim()) return;
+  navigator.clipboard?.writeText(text)
+    .then(() => toast.success(`${label} copied`))
+    .catch(() => toast.error('Unable to copy', { description: 'Clipboard access is unavailable in this browser.' }));
+}
+
+function parseAuditResult(result: unknown): unknown {
+  if (typeof result !== 'string') return result;
+
+  const trimmed = result.trim();
+  const jsonCandidate = trimmed
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[')) return result;
+
+  try {
+    return JSON.parse(jsonCandidate);
+  } catch {
+    return result;
+  }
+}
+
 function AuditResultView({ result }: { result: unknown }) {
-  if (typeof result === 'object' && result !== null && 'error' in result) {
+  const parsedResult = parseAuditResult(result);
+
+  if (typeof parsedResult === 'object' && parsedResult !== null && 'error' in parsedResult) {
     return (
       <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-foreground">
-        {String((result as { error: unknown }).error)}
+        {String((parsedResult as { error: unknown }).error)}
       </div>
     );
   }
 
-  if (typeof result !== 'object' || result === null) {
-    return <pre className="whitespace-pre-wrap rounded-2xl border border-border bg-muted/45 p-4 text-xs text-foreground">{String(result)}</pre>;
+  if (typeof parsedResult !== 'object' || parsedResult === null) {
+    return (
+      <div className="rounded-2xl border border-border bg-card/80 p-4 text-sm leading-relaxed text-foreground">
+        {String(parsedResult)}
+      </div>
+    );
   }
 
-  const data = result as Record<string, unknown>;
+  const data = parsedResult as Record<string, unknown>;
   const issueSections = ['urgentIssues', 'followUpTimingIssues', 'stageDiscrepancies', 'copyPasteSignals'];
+  const issueRows = getAuditIssueRows(data, issueSections);
+  const recommendedActions = Array.isArray(data.recommendedActions) ? data.recommendedActions : [];
+  const summaryText = auditText(data.executiveSummary);
+  const reportText = [
+    summaryText,
+    ...issueRows.map((row) => `${row.category} | ${row.leadLabel} | ${row.severity}: ${row.reason} Evidence: ${row.evidence} Action: ${row.recommendedAction}`),
+    ...recommendedActions.map((action) => `Action: ${auditText(action)}`),
+  ].filter(Boolean).join('\n');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {typeof data.executiveSummary === 'string' && (
-        <div className="rounded-2xl border border-border bg-card/80 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Executive summary</p>
-          <p className="mt-2 text-sm leading-relaxed text-foreground">{data.executiveSummary}</p>
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              <BrainCircuit className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Executive summary</p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">{data.executiveSummary}</p>
+            </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={() => copyAuditText('Summary', summaryText)}>
+                <Copy className="h-3.5 w-3.5" /> Copy summary
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={() => copyAuditText('Report', reportText)}>
+                <ClipboardList className="h-3.5 w-3.5" /> Copy report
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-4">
+        {issueSections.map((section) => {
+          const count = Array.isArray(data[section]) ? data[section].length : 0;
+          const meta = auditSectionMeta[section];
+          return (
+            <div key={section} className={`rounded-2xl border p-3 ${meta.tone}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-75">{meta.label}</p>
+              <p className="mt-1 font-mono-data text-2xl font-bold">{count}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {issueRows.length > 0 ? (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/80">
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Analysis table</h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="h-10 text-xs">Category</TableHead>
+                <TableHead className="h-10 text-xs">Lead</TableHead>
+                <TableHead className="h-10 text-xs">Severity</TableHead>
+                <TableHead className="h-10 text-xs">Finding</TableHead>
+                <TableHead className="h-10 text-xs">Evidence</TableHead>
+                <TableHead className="h-10 text-xs">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {issueRows.map((row, index) => (
+                <TableRow key={`${row.category}-${row.leadLabel}-${index}`} className="align-top">
+                  <TableCell className="min-w-32 p-3 text-xs font-semibold text-foreground">{row.category}</TableCell>
+                  <TableCell className="p-3 text-xs font-semibold text-foreground">{row.leadLabel}</TableCell>
+                  <TableCell className="p-3">
+                    <Badge variant={severityBadgeVariant(row.severity)} className="text-[10px] uppercase tracking-[0.12em]">{row.severity}</Badge>
+                  </TableCell>
+                  <TableCell className="min-w-48 p-3 text-xs leading-relaxed text-foreground">{row.reason || '-'}</TableCell>
+                  <TableCell className="min-w-48 p-3 text-xs leading-relaxed text-muted-foreground">{row.evidence || '-'}</TableCell>
+                  <TableCell className="min-w-48 p-3 text-xs leading-relaxed text-foreground">{row.recommendedAction || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-100">
+          <CheckCircle2 className="h-5 w-5" />
+          No structured issue rows were returned by the AI audit.
         </div>
       )}
 
@@ -108,7 +279,21 @@ function AuditResultView({ result }: { result: unknown }) {
         <AuditSection key={section} title={section} value={data[section]} />
       ))}
 
-      <AuditSection title="recommendedActions" value={data.recommendedActions} />
+      {recommendedActions.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card/80 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-sm font-semibold text-foreground">Recommended actions</h3>
+          </div>
+          <div className="grid gap-2">
+            {recommendedActions.slice(0, 10).map((action, index) => (
+              <div key={index} className="rounded-xl bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground">
+                {auditText(action) || String(action)}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -118,15 +303,17 @@ function AuditSection({ title, value }: { title: string; value: unknown }) {
 
   return (
     <section className="space-y-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {title.replace(/([A-Z])/g, ' $1')}
+      <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {auditSectionMeta[title]?.label ?? formatAuditLabel(title)}
       </h3>
-      {value.slice(0, 10).map((item, index) => (
-        <div key={index} className="rounded-2xl border border-border bg-card/80 p-4 text-sm">
+      <div className="grid gap-2 sm:grid-cols-2">
+      {value.slice(0, 8).map((item, index) => (
+        <div key={index} className="rounded-2xl border border-border bg-card/80 p-4 text-sm shadow-sm">
           {typeof item === 'object' && item !== null ? (
             <div className="space-y-1.5">
-              {'leadId' in item && <p className="font-mono-data text-xs text-muted-foreground">Lead ID: {String((item as Record<string, unknown>).leadId)}</p>}
-              {'severity' in item && <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{String((item as Record<string, unknown>).severity)}</p>}
+              {('leadName' in item || 'leadId' in item) && <p className="text-xs font-semibold text-foreground">Lead: {String((item as Record<string, unknown>).leadName ?? (item as Record<string, unknown>).leadId)}</p>}
+              {'severity' in item && <Badge variant={severityBadgeVariant(String((item as Record<string, unknown>).severity))} className="text-[10px] uppercase tracking-[0.12em]">{String((item as Record<string, unknown>).severity)}</Badge>}
               {'reason' in item && <p className="font-semibold text-foreground">{String((item as Record<string, unknown>).reason)}</p>}
               {'evidence' in item && <p className="text-xs leading-relaxed text-muted-foreground">{String((item as Record<string, unknown>).evidence)}</p>}
               {'recommendedAction' in item && <p className="text-xs leading-relaxed text-foreground">{String((item as Record<string, unknown>).recommendedAction)}</p>}
@@ -136,6 +323,7 @@ function AuditSection({ title, value }: { title: string; value: unknown }) {
           )}
         </div>
       ))}
+      </div>
     </section>
   );
 }
@@ -162,6 +350,9 @@ const Index = () => {
   const [isComparisonDialogOpen, setIsComparisonDialogOpen] = useState(false);
   const [comparisonCode, setComparisonCode] = useState('');
   const [isAuditDialogOpen, setIsAuditDialogOpen] = useState(false);
+  const [isAssociateAuditDialogOpen, setIsAssociateAuditDialogOpen] = useState(false);
+  const [selectedAssociateForAudit, setSelectedAssociateForAudit] = useState('');
+  const [auditScopeLabel, setAuditScopeLabel] = useState('Filtered dashboard');
   const [auditPayload, setAuditPayload] = useState<ReturnType<typeof buildLeadAuditPayload> | null>(null);
   const [auditResult, setAuditResult] = useState<unknown>(null);
   const leadAudit = useLeadAudit();
@@ -172,6 +363,7 @@ const Index = () => {
   const options = useMemo(() => buildLeadOptions(leads), [leads]);
   const weekRangeLabel = useMemo(() => getCurrentWeekRangeLabel(), []);
   const isTableWorkspace = view === 'table' || view === 'compact';
+  const isWideWorkspace = isTableWorkspace || view === 'journey-flow';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -193,6 +385,13 @@ const Index = () => {
     setIsComparisonDialogOpen(true);
   };
 
+  const goHome = () => {
+    setView('table');
+    setFilters(defaultFilters);
+    setIsAuditDialogOpen(false);
+    setIsComparisonDialogOpen(false);
+  };
+
   const unlockComparisonView = () => {
     if (comparisonCode.trim() !== COMPARISON_SECRET) {
       toast.error('Incorrect secret code', {
@@ -211,17 +410,19 @@ const Index = () => {
     toast.success('Comparison view unlocked');
   };
 
-  const runLeadAudit = async () => {
-    if (filteredLeads.length === 0) {
+  const runLeadAuditFor = async (targetLeads: Lead[], scopeLabel: string) => {
+    if (targetLeads.length === 0) {
       toast.error('No leads to analyze', {
         description: 'Adjust filters so the dashboard has leads before running the audit.',
       });
       return;
     }
 
-    const payload = buildLeadAuditPayload(filteredLeads);
+    const payload = buildLeadAuditPayload(targetLeads);
     setAuditPayload(payload);
     setAuditResult(null);
+    setAuditScopeLabel(scopeLabel);
+    setIsAssociateAuditDialogOpen(false);
     setIsAuditDialogOpen(true);
 
     try {
@@ -232,6 +433,20 @@ const Index = () => {
       toast.error('Unable to run DeepSeek audit', { description });
       setAuditResult({ error: description });
     }
+  };
+
+  const runLeadAudit = () => runLeadAuditFor(filteredLeads, 'Filtered dashboard');
+
+  const runAssociateAudit = () => {
+    if (!selectedAssociateForAudit) {
+      toast.error('Choose an associate', {
+        description: 'Select one associate before generating an associate-specific report.',
+      });
+      return;
+    }
+
+    const associateLeads = filteredLeads.filter((lead) => lead.associate === selectedAssociateForAudit);
+    void runLeadAuditFor(associateLeads, `Associate: ${selectedAssociateForAudit}`);
   };
 
   const views: Array<{ key: ViewMode; label: string; icon: typeof LayoutList }> = [
@@ -248,11 +463,16 @@ const Index = () => {
   return (
     <div className="app-page-bg min-h-screen text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_50px_-44px_rgba(15,23,42,0.34)] backdrop-blur-2xl dark:bg-background/80 dark:shadow-[0_18px_60px_-42px_rgba(0,0,0,0.92)]">
-        <div className={`${isTableWorkspace ? 'w-full px-4 md:px-6' : 'mx-auto max-w-[1680px] px-4 md:px-6'} flex min-h-16 flex-col gap-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between`}>
+        <div className={`${isWideWorkspace ? 'w-full px-4 md:px-6' : 'mx-auto max-w-[1680px] px-4 md:px-6'} flex min-h-16 flex-col gap-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between`}>
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#7f1231,#9f1d4c,#6d4bc4)] shadow-[0_16px_30px_-18px_rgba(127,18,49,0.72)] ring-1 ring-white/70 dark:ring-rose-200/20">
+              <button
+                type="button"
+                onClick={goHome}
+                aria-label="Go to home dashboard"
+                className="theme-contrast-hover flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#7f1231,#9f1d4c,#6d4bc4)] shadow-[0_16px_30px_-18px_rgba(127,18,49,0.72)] ring-1 ring-white/70 transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary/40 dark:ring-rose-200/20"
+              >
                 <Zap className="h-4.5 w-4.5 text-white" />
-              </div>
+              </button>
               <div className="min-w-0">
                 <motion.h1
                   initial={{ opacity: 0, y: 8 }}
@@ -285,7 +505,7 @@ const Index = () => {
                   <button
                     key={key}
                     onClick={() => handleViewChange(key)}
-                    className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                    className={`theme-contrast-hover flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                       view === key
                         ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/20'
                         : 'text-muted-foreground hover:bg-card/75 hover:text-foreground'
@@ -310,6 +530,19 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  setSelectedAssociateForAudit(options.associates[0] ?? '');
+                  setIsAssociateAuditDialogOpen(true);
+                }}
+                disabled={leadAudit.isPending || options.associates.length === 0}
+                className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
+              >
+                <UserRound className="h-3.5 w-3.5" />
+                Associate Report
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => refetch()}
                 disabled={isFetching}
                 className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
@@ -321,7 +554,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className={`relative z-10 ${isTableWorkspace ? 'h-[calc(100vh-8.25rem)] w-full overflow-hidden px-0 py-0 sm:h-[calc(100vh-4rem)]' : 'mx-auto max-w-[1680px] space-y-5 px-4 py-5 md:px-6'}`}>
+      <main className={`relative z-10 ${isTableWorkspace ? 'h-[calc(100vh-8.25rem)] w-full overflow-hidden px-0 py-0 sm:h-[calc(100vh-4rem)]' : view === 'journey-flow' ? 'w-full space-y-5 px-4 py-5 md:px-6' : 'mx-auto max-w-[1680px] space-y-5 px-4 py-5 md:px-6'}`}>
         {error && (
           <div className="glass-strong rounded-2xl border border-accent-overdue/20 p-4 shadow-sm">
             <p className="text-sm text-accent-overdue">
@@ -405,6 +638,44 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isAssociateAuditDialogOpen} onOpenChange={setIsAssociateAuditDialogOpen}>
+        <DialogContent className="sm:max-w-md overflow-hidden rounded-3xl border-border/50 bg-background/95 p-0">
+          <div className="border-b border-border/30 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <UserRound className="h-4 w-4 text-primary" /> Associate AI report
+              </DialogTitle>
+              <DialogDescription>
+                Generate a DeepSeek analysis for one associate using the current dashboard filters.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="space-y-2 px-6 py-5">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Associate</label>
+            <select
+              value={selectedAssociateForAudit}
+              onChange={(event) => setSelectedAssociateForAudit(event.target.value)}
+              className="h-11 w-full rounded-2xl border border-border/50 bg-background/80 px-3 text-sm text-foreground"
+            >
+              {options.associates.map((associate) => (
+                <option key={associate} value={associate}>{associate}</option>
+              ))}
+            </select>
+            {selectedAssociateForAudit && (
+              <p className="text-xs text-muted-foreground">
+                {filteredLeads.filter((lead) => lead.associate === selectedAssociateForAudit).length} filtered leads will be analyzed.
+              </p>
+            )}
+          </div>
+          <DialogFooter className="border-t border-border/30 px-6 py-4">
+            <Button variant="outline" className="rounded-xl" onClick={() => setIsAssociateAuditDialogOpen(false)}>Cancel</Button>
+            <Button className="rounded-xl" onClick={runAssociateAudit} disabled={leadAudit.isPending}>
+              <BrainCircuit className="h-4 w-4" /> Generate report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isAuditDialogOpen} onOpenChange={setIsAuditDialogOpen}>
         <DialogContent className="max-h-[86vh] overflow-hidden rounded-3xl border-border/50 bg-background/95 p-0 sm:max-w-3xl">
           <div className="border-b border-border/30 px-6 py-5">
@@ -413,16 +684,17 @@ const Index = () => {
                 <BrainCircuit className="h-4 w-4 text-primary" /> DeepSeek lead audit
               </DialogTitle>
               <DialogDescription>
-                Analyzes the filtered dashboard data, capped to a maximum one-month lead window.
+                {auditScopeLabel}. Capped to a maximum one-month lead window.
               </DialogDescription>
             </DialogHeader>
           </div>
 
           <div className="lead-scroll-area max-h-[62vh] space-y-4 overflow-auto px-6 py-5">
             {auditPayload && (
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-5">
                 <AuditMetric label="Window leads" value={`${auditPayload.analysisWindow.includedLeads}/${auditPayload.analysisWindow.requestedLeads}`} />
                 <AuditMetric label="Active" value={String(auditPayload.summary.activeLeads)} />
+                <AuditMetric label="Sold/converted" value={String(auditPayload.summary.convertedOrSoldLeads)} />
                 <AuditMetric label="Local flags" value={String(auditPayload.summary.deterministicIssueCount)} />
                 <AuditMetric label="Max period" value={`${auditPayload.analysisWindow.maxDays}d`} />
               </div>

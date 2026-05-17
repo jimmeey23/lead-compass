@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, Phone, Mail, MessageSquare, ArrowRight, Save, RotateCcw, CheckCircle2, CircleDashed, Clock3 } from 'lucide-react';
+import { X, Phone, Mail, MessageSquare, ArrowRight, Save, RotateCcw, CheckCircle2, CircleDashed, Clock3, ChevronDown } from 'lucide-react';
 import type { Lead, AssociateStats } from '@/types/leads';
 import type { LeadOptionSets } from '@/types/leads';
 import { FollowUpTimeline } from './FollowUpTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { buildSourceIdMap, isSalesConvertedLead, normalizeCenterName, normalizePersonName } from '@/lib/lead-utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { buildSourceIdMap, isSalesConvertedLead, normalizePersonName } from '@/lib/lead-utils';
 import { buildMomencePayload, useUpdateLead } from '@/hooks/useLeadsData';
 import { toast } from '@/components/ui/sonner';
 
@@ -176,22 +177,6 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
       </div>
 
       <div className="space-y-6 bg-background p-5">
-        {/* Status Badges */}
-        <div className="flex flex-wrap gap-2">
-          {[draft.status, draft.stageName, draft.sourceName, draft.conversionStatus].filter(Boolean).map((label) => (
-            <span key={label} className="rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground">
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-3 gap-3">
-          <MetricCard label="LTV" value={`₹${lead.ltv.toLocaleString()}`} highlight={lead.ltv > 0} />
-          <MetricCard label="Visits" value={String(lead.visits)} />
-          <MetricCard label="Purchases" value={String(lead.purchasesMade)} />
-        </div>
-
         {/* Conversion Path */}
         <Section title="Conversion Path">
           <div className="flex items-center gap-2 flex-wrap">
@@ -304,78 +289,30 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
           </div>
         </Section>
 
-        {/* Contact Info */}
-        <Section title="Contact Details">
-          <div className="space-y-0">
-            <InfoRow label="Phone" value={draft.phoneNumber} mono />
-            <InfoRow label="Email" value={draft.email} />
-            <InfoRow label="Center" value={normalizeCenterName(draft.center)} />
-            <InfoRow label="Class Type" value={draft.classType} />
-            <InfoRow label="Channel" value={draft.channel} />
-            <InfoRow label="Associate" value={draft.associate} />
-            <InfoRow label="Source" value={draft.sourceName} />
-            <InfoRow label="Created" value={draft.createdAt} mono />
-            {draft.convertedAt && draft.convertedAt !== '-' && (
-              <InfoRow label="Converted" value={draft.convertedAt} mono />
+        {/* Counts */}
+        <Section title="Counts">
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <MetricCard label="LTV" value={`₹${lead.ltv.toLocaleString()}`} highlight={lead.ltv > 0} />
+              <MetricCard label="Visits" value={String(lead.visits)} />
+              <MetricCard label="Purchases" value={String(lead.purchasesMade)} />
+            </div>
+
+            {associateStats && (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <MetricCard label="Total Leads" value={String(associateStats.totalLeads)} />
+                <MetricCard label="Conv. Rate" value={`${associateStats.conversionRate.toFixed(1)}%`} highlight={associateStats.conversionRate > 20} />
+                <MetricCard label="Close Rate" value={`${associateStats.closeRate.toFixed(1)}%`} highlight={associateStats.closeRate > 25} />
+                <MetricCard label="Avg Follow-ups" value={associateStats.avgFollowUps.toFixed(1)} />
+                <MetricCard label="Scheduled FUs" value={String(associateStats.scheduledFollowUps)} />
+                <MetricCard label="Avg Visits" value={associateStats.avgVisits.toFixed(1)} />
+                <MetricCard label="Avg LTV" value={`₹${associateStats.avgLtv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                <MetricCard label="Centers" value={String(associateStats.centersCovered)} />
+                <MetricCard label="Overdue" value={String(associateStats.overdueFollowUps)} highlight={associateStats.overdueFollowUps > 0} highlightDestructive />
+              </div>
             )}
           </div>
         </Section>
-
-        {/* Remarks */}
-        <Section title="Remarks">
-          <p className={`rounded-xl border p-3.5 text-sm leading-relaxed ${
-            !draft.remarks || draft.remarks === '-'
-              ? 'border-border bg-muted/55 italic text-muted-foreground'
-              : 'border-border bg-card/80 text-foreground'
-          }`}>
-            {draft.remarks && draft.remarks !== '-' ? draft.remarks : 'No remarks added'}
-          </p>
-        </Section>
-
-        {/* Follow-up Timeline */}
-        <Section title="Follow-up History">
-          <div className="mb-4">
-            <FollowUpTimeline followUps={draft.followUps} status={draft.status} />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {draft.followUps.map((fu) => {
-              const hasDate = !!fu.date && fu.date !== '-';
-              const hasComment = !!fu.comment && fu.comment !== '-';
-              return (
-                <div key={fu.index} className={`rounded-xl border p-3.5 text-sm ${
-                  !hasDate ? 'border-border bg-muted/55 text-muted-foreground' :
-                  !hasComment ? 'border-border bg-card/80' :
-                  'border-border bg-card/80'
-                }`}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="font-semibold text-foreground text-xs">Follow Up {fu.index}</span>
-                    {hasDate && <span className="font-mono text-[11px] text-muted-foreground">{fu.date}</span>}
-                  </div>
-                  <p className={`text-xs leading-relaxed ${!hasComment && hasDate ? 'italic text-muted-foreground' : 'text-muted-foreground'}`}>
-                    {hasComment ? fu.comment : hasDate ? 'Missing feedback' : 'Not scheduled'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-
-        {/* Associate Benchmark */}
-        {associateStats && (
-          <Section title="Associate Performance">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <MetricCard label="Total Leads" value={String(associateStats.totalLeads)} />
-              <MetricCard label="Conv. Rate" value={`${associateStats.conversionRate.toFixed(1)}%`} highlight={associateStats.conversionRate > 20} />
-              <MetricCard label="Close Rate" value={`${associateStats.closeRate.toFixed(1)}%`} highlight={associateStats.closeRate > 25} />
-              <MetricCard label="Avg Follow-ups" value={associateStats.avgFollowUps.toFixed(1)} />
-              <MetricCard label="Scheduled FUs" value={String(associateStats.scheduledFollowUps)} />
-              <MetricCard label="Avg Visits" value={associateStats.avgVisits.toFixed(1)} />
-              <MetricCard label="Avg LTV" value={`₹${associateStats.avgLtv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-              <MetricCard label="Centers" value={String(associateStats.centersCovered)} />
-              <MetricCard label="Overdue" value={String(associateStats.overdueFollowUps)} highlight={associateStats.overdueFollowUps > 0} highlightDestructive />
-            </div>
-          </Section>
-        )}
       </div>
     </motion.div>
   );
@@ -448,15 +385,27 @@ function CompletionPill({ lead }: { lead: Lead }) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+
   return (
-    <section className="lux-panel overflow-hidden rounded-2xl">
-      <div className="border-b border-border px-4 py-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
-      </div>
-      <div className="p-4">
-        {children}
-      </div>
-    </section>
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section className="lux-panel overflow-hidden rounded-2xl">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="theme-contrast-hover flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted/35"
+          >
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="p-4">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
@@ -465,15 +414,6 @@ function MetricCard({ label, value, highlight, highlightDestructive }: { label: 
     <div className={`rounded-xl border p-3.5 ${highlight ? 'border-primary/40 bg-primary/20 text-foreground' : 'border-border bg-card/80'}`}>
       <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider ${highlight ? 'text-primary' : 'text-muted-foreground'}`}>{label}</p>
       <p className="font-mono text-lg font-bold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-center justify-between border-b border-border py-2.5 last:border-0">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`text-sm text-foreground ${mono ? 'font-mono' : ''}`}>{value || '—'}</span>
     </div>
   );
 }

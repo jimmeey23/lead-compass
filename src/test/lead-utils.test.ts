@@ -164,7 +164,6 @@ describe('lead utils', () => {
   it('filters leads by separate creation and conversion date ranges', () => {
     const filters: FilterState = {
       ...defaultFilters,
-      center: 'all',
       datePreset: 'custom',
       customDateFrom: '2026-03-01',
       customDateTo: '2026-03-31',
@@ -185,7 +184,6 @@ describe('lead utils', () => {
   it('filters lead creation ranges when lead dates use DD/MM/YY format', () => {
     const filters: FilterState = {
       ...defaultFilters,
-      center: 'all',
       datePreset: 'custom',
       customDateFrom: '2026-03-01',
       customDateTo: '2026-03-31',
@@ -204,7 +202,6 @@ describe('lead utils', () => {
   it('includes conversions through the end of the selected custom to date', () => {
     const filters: FilterState = {
       ...defaultFilters,
-      center: 'all',
       datePreset: 'all',
       convertedDatePreset: 'custom',
       convertedDateFrom: '2026-05-31',
@@ -218,11 +215,29 @@ describe('lead utils', () => {
     expect(filtered.map((lead) => lead.id)).toEqual(['same-day']);
   });
 
+  it('filters by multiple associates and centers', () => {
+    const filters: FilterState = {
+      ...defaultFilters,
+      associate: ['Akshay Rane', 'Nadiya Shaikh'],
+      center: ['Supreme Headquarters, Bandra', 'Kenkere House, Bengaluru'],
+      datePreset: 'all',
+    };
+
+    const filtered = applyLeadFilters([
+      { ...baseLead, id: 'akshay-bandra', associate: 'Akshay Rane', center: 'Supreme Headquarters, Bandra' },
+      { ...baseLead, id: 'nadiya-bengaluru', associate: 'Nadiya Shaikh', center: 'Kenkere House, Bengaluru' },
+      { ...baseLead, id: 'other-associate', associate: 'Other Associate', center: 'Supreme Headquarters, Bandra' },
+      { ...baseLead, id: 'other-center', associate: 'Akshay Rane', center: 'Other Center' },
+    ], filters);
+
+    expect(filtered.map((lead) => lead.id)).toEqual(['akshay-bandra', 'nadiya-bengaluru']);
+  });
+
   it('can clear date filters while preserving non-date filters for date-free views', () => {
     const filters: FilterState = {
       ...defaultFilters,
-      associate: 'Akshay Rane',
-      center: 'Supreme Headquarters, Bandra',
+      associate: ['Akshay Rane'],
+      center: ['Supreme Headquarters, Bandra'],
       sourceName: ['Instagram'],
       datePreset: 'custom',
       customDateFrom: '2026-03-01',

@@ -48,6 +48,16 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
     onChange({ ...filters, [key]: value });
   };
 
+  const toggleArrayValue = (key: 'center' | 'associate', value: string) => {
+    const current = filters[key];
+    update(
+      key,
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  };
+
   const updateDatePreset = (key: 'datePreset' | 'convertedDatePreset', value: DatePreset) => {
     onChange({ ...filters, [key]: value });
   };
@@ -143,9 +153,9 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
               <div className="flex items-center gap-2 flex-wrap">
                 <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <button
-                  onClick={() => update('center', 'all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    filters.center === 'all'
+                  onClick={() => update('center', [])}
+                  className={`theme-contrast-hover px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    filters.center.length === 0
                       ? 'dashboard-header-panel shadow-sm'
                       : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                   }`}
@@ -153,9 +163,9 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                 {centers.map(c => (
                   <button
                     key={c}
-                    onClick={() => update('center', filters.center === c ? 'all' : c)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      filters.center === c
+                    onClick={() => toggleArrayValue('center', c)}
+                    className={`theme-contrast-hover px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      filters.center.includes(c)
                         ? 'dashboard-header-panel shadow-sm'
                         : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                     }`}
@@ -169,9 +179,9 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
               <div className="flex items-center gap-2 flex-wrap">
                 <UserCircle className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <button
-                  onClick={() => update('associate', 'all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    filters.associate === 'all'
+                  onClick={() => update('associate', [])}
+                  className={`theme-contrast-hover px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    filters.associate.length === 0
                       ? 'dashboard-header-panel shadow-sm'
                       : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                   }`}
@@ -179,9 +189,9 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
                 {associates.map(a => (
                   <button
                     key={a}
-                    onClick={() => update('associate', filters.associate === a ? 'all' : a)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      filters.associate === a
+                    onClick={() => toggleArrayValue('associate', a)}
+                    className={`theme-contrast-hover px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      filters.associate.includes(a)
                         ? 'dashboard-header-panel shadow-sm'
                         : 'bg-background/60 text-muted-foreground hover:bg-sky-50 hover:text-foreground border border-border/40'
                     }`}
@@ -206,6 +216,8 @@ export function LeadFilters({ filters, onChange, leads }: Props) {
             className="overflow-hidden"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 px-4 pb-4 border-t border-border/30 pt-4">
+              <FilterMultiSelect label="Location" value={filters.center} options={centers} onChange={(v) => update('center', v)} />
+              <FilterMultiSelect label="Associate" value={filters.associate} options={associates} onChange={(v) => update('associate', v)} />
               <FilterMultiSelect label="Status" value={filters.status} options={statuses} onChange={(v) => update('status', v)} />
               <FilterMultiSelect label="Stage" value={filters.stageName} options={stageNames} onChange={(v) => update('stageName', v)} />
               <FilterMultiSelect label="Source" value={filters.sourceName} options={sourceNames} onChange={(v) => update('sourceName', v)} />

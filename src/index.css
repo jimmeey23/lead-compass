@@ -441,6 +441,26 @@
   color: hsl(var(--foreground));
 }
 
+.theme-contrast-hover:not(:disabled):not([aria-disabled="true"]):hover {
+  background: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--foreground) / 0.72) !important;
+  color: hsl(var(--background)) !important;
+}
+
+.dark .theme-contrast-hover:not(:disabled):not([aria-disabled="true"]):hover {
+  background: hsl(var(--muted) / 0.95) !important;
+  border-color: hsl(var(--border) / 0.95) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.theme-contrast-hover:not(:disabled):not([aria-disabled="true"]):hover svg {
+  color: currentColor;
+}
+
+.theme-contrast-hover:not(:disabled):not([aria-disabled="true"]):hover * {
+  color: inherit !important;
+}
+
 .dark .lux-control {
   background: hsl(231 24% 12% / 0.92);
   border-color: hsl(344 42% 42% / 0.32);

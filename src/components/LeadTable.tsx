@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, ChevronDown, ChevronRight as ChevronRightIcon, CircleSlash, Layers3, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Search, RotateCcw, SlidersHorizontal, Sparkles, CalendarRange, Pin, PinOff, MapPin, UserRound, Users } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, ChevronDown, ChevronRight as ChevronRightIcon, CircleSlash, Layers3, MessageSquarePlus, Search, RotateCcw, SlidersHorizontal, Sparkles, CalendarRange, Pin, PinOff, MapPin, UserRound, Users } from 'lucide-react';
 import type { DatePreset, FilterState, GroupableLeadKey, Lead, LeadOptionSets } from '@/types/leads';
 import type { FollowUp } from '@/types/leads';
 import { parseDateStr } from '@/types/leads';
@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { buildMomencePayload, useUpdateLead } from '@/hooks/useLeadsData';
 import { toast } from '@/components/ui/sonner';
 import { DatePickerField } from './DatePickerField';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Props {
   leads: Lead[];
@@ -155,22 +156,24 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
     }).length;
   }, [filters]);
   const centerScopedAssociates = useMemo(() => {
-    if (!filters || filters.center === 'all') {
+    if (!filters || filters.center.length === 0) {
       return options.associates;
     }
+
+    const selectedCenters = filters.center.map((center) => cleanLooseText(center));
 
     return Array.from(
       new Set(
         allLeads
-          .filter((lead) => cleanLooseText(lead.center) === cleanLooseText(filters.center))
+          .filter((lead) => selectedCenters.includes(cleanLooseText(lead.center)))
           .map((lead) => lead.associate)
           .filter(Boolean),
       ),
     ).sort((a, b) => a.localeCompare(b));
   }, [allLeads, filters, options.associates]);
   const centerOptions = useMemo(() => {
-    const selectedCenter = filters?.center && filters.center !== 'all' ? [filters.center] : [];
-    return Array.from(new Set([...selectedCenter, ...options.centers]));
+    const selectedCenters = filters?.center ?? [];
+    return Array.from(new Set([...selectedCenters, ...options.centers]));
   }, [filters?.center, options.centers]);
 
   useEffect(() => {
@@ -189,10 +192,12 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
 
   useEffect(() => {
     if (!filters || !onFiltersChange) return;
-    if (filters.center === 'all' || filters.associate === 'all') return;
-    if (centerScopedAssociates.includes(filters.associate)) return;
+    if (filters.center.length === 0 || filters.associate.length === 0) return;
 
-    onFiltersChange({ ...filters, associate: 'all' });
+    const nextAssociates = filters.associate.filter((associate) => centerScopedAssociates.includes(associate));
+    if (nextAssociates.length === filters.associate.length) return;
+
+    onFiltersChange({ ...filters, associate: nextAssociates });
   }, [centerScopedAssociates, filters, onFiltersChange]);
 
   useEffect(() => {
@@ -331,38 +336,33 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
           }}
           className={`lux-sidebar flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border/75 text-card-foreground shadow-[inset_-1px_0_0_rgba(159,29,76,0.10)] transition-[width] duration-300 dark:shadow-[inset_-1px_0_0_rgba(230,80,126,0.12)] ${isSidebarCollapsed ? 'w-[64px]' : 'w-[360px]'}`}
         >
-          <div className={`lux-sidebar-header flex h-12 items-center border-b border-white/15 ${isSidebarCollapsed ? 'justify-between px-2 py-2' : 'px-4 py-2'}`}>
+          <div className={`lux-sidebar-header flex h-12 items-center border-b border-white/15 ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'px-4 py-2'}`}>
             {isSidebarCollapsed ? (
-              <>
-                <div className="lux-icon-tile rounded-2xl p-1.5">
+              <button
+                type="button"
+                aria-label="Expand command panel"
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="lux-icon-tile theme-contrast-hover flex h-9 w-9 items-center justify-center rounded-2xl p-1.5 transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-white/35"
+              >
                   <Sparkles className="h-3.5 w-3.5" />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSidebarCollapsed(false)}
-                  className="h-8 w-8 rounded-xl p-0 text-white/75 hover:bg-white/15 hover:text-white"
-                >
-                  <PanelLeftOpen className="h-4 w-4" />
-                </Button>
-              </>
+              </button>
             ) : (
               <>
-              <div>
-                <p className="text-sm font-semibold text-white">Command panel</p>
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/70">Filters · Groups · Counts</p>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <button
+                  type="button"
+                  aria-label="Collapse command panel"
+                  onClick={() => setIsSidebarCollapsed(true)}
+                  className="lux-icon-tile theme-contrast-hover flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-white/35"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </button>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">Command panel</p>
+                  <p className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-white/70">Filters · Groups · Counts</p>
+                </div>
               </div>
               <div className="ml-auto flex items-center gap-1.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSidebarCollapsed(true)}
-                  className="h-9 w-9 rounded-xl p-0 text-white/75 hover:bg-white/15 hover:text-white"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -390,65 +390,21 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-4">
-                <section className="lux-section overflow-hidden rounded-xl">
-                  <div className="lux-section-header mb-3 flex items-center justify-between gap-3 px-3.5 py-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Overview</p>
-                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Visible workspace pulse</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
+                <CommandPanelSection icon={Sparkles} title="Overview" subtitle="Visible workspace pulse">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {sidebarStatCards.map((card) => (
                       <SidebarStatCard key={card.label} label={card.label} value={card.value} />
                     ))}
                   </div>
-                </section>
-
-                <section className="lux-section overflow-hidden rounded-xl">
-                  <div className="lux-section-header mb-3 flex items-center justify-between px-3.5 py-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
-                        <Users className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Counts</p>
-                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Full filtered result set</p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 rounded-xl border border-white/20 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20 hover:text-white"
-                      onClick={() => setIsStageSummaryCollapsed((current) => !current)}
-                    >
-                      {isStageSummaryCollapsed ? 'More' : 'Less'}
-                    </Button>
-                  </div>
-                  <div className="space-y-3 px-3.5 pb-3.5">
-                    <SummaryCountTable title="Stages" rows={displayedStageSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
-                    <SummaryCountTable title="Sources" rows={displayedSourceSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
-                  </div>
-                </section>
+                </CommandPanelSection>
 
                 {filters && onFiltersChange && (
-                  <section className="lux-section overflow-hidden rounded-xl">
-                    <div className="lux-section-header mb-3 flex items-center justify-between gap-2 px-3.5 py-3">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
-                          <SlidersHorizontal className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Filters</p>
-                          <p className="mt-0.5 text-[11px] lux-section-header-muted">Refine the active lead set</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                  <CommandPanelSection
+                    icon={SlidersHorizontal}
+                    title="Filters"
+                    subtitle="Refine the active lead set"
+                    action={
+                      <>
                         {activeFilterCount > 0 && (
                           <Button
                             type="button"
@@ -460,9 +416,10 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
                           </Button>
                         )}
-                      </div>
-                    </div>
-                    <div className="space-y-3 px-3.5 pb-3.5">
+                      </>
+                    }
+                  >
+                    <div className="space-y-3">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Search</label>
                         <div className="relative">
@@ -526,17 +483,17 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                           </div>
                         </div>
                       )}
-                      <SidebarSelect
+                      <SidebarMultiSelect
                         label="Associate"
-                        value={filters.associate}
-                        onChange={(value) => onFiltersChange({ ...filters, associate: value })}
-                        options={[{ label: 'All associates', value: 'all' }, ...centerScopedAssociates.map((associate) => ({ label: associate, value: associate }))]}
+                        selected={filters.associate}
+                        onChange={(associate) => onFiltersChange({ ...filters, associate })}
+                        options={centerScopedAssociates}
                       />
-                      <SidebarSelect
+                      <SidebarMultiSelect
                         label="Center"
-                        value={filters.center}
-                        onChange={(value) => onFiltersChange({ ...filters, center: value })}
-                        options={[{ label: 'All centers', value: 'all' }, ...centerOptions.map((center) => ({ label: center, value: center }))]}
+                        selected={filters.center}
+                        onChange={(center) => onFiltersChange({ ...filters, center })}
+                        options={centerOptions}
                       />
                       <SidebarMultiSelect label="Stage" options={options.stageNames} selected={filters.stageName} onChange={(stageName) => onFiltersChange({ ...filters, stageName })} />
                       <SidebarMultiSelect label="Source" options={options.sourceNames} selected={filters.sourceName} onChange={(sourceName) => onFiltersChange({ ...filters, sourceName })} />
@@ -545,20 +502,14 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                       <SidebarMultiSelect label="Conversion" options={options.conversionStatuses} selected={filters.conversionStatus} onChange={(conversionStatus) => onFiltersChange({ ...filters, conversionStatus })} />
                       <SidebarMultiSelect label="Trial status" options={options.trialStatuses} selected={filters.trialStatus} onChange={(trialStatus) => onFiltersChange({ ...filters, trialStatus })} />
                     </div>
-                  </section>
+                  </CommandPanelSection>
                 )}
 
-                  <section className="lux-section overflow-hidden rounded-xl">
-                  <div className="lux-section-header mb-3 flex items-center justify-between gap-3 px-3.5 py-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
-                        <Layers3 className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Grouping</p>
-                        <p className="mt-0.5 text-[11px] lux-section-header-muted">Organize rows into clusters</p>
-                      </div>
-                    </div>
+                <CommandPanelSection
+                  icon={Layers3}
+                  title="Grouping"
+                  subtitle="Organize rows into clusters"
+                  action={
                     <select
                       value={pageSize}
                       onChange={(event) => setPageSize(Number(event.target.value))}
@@ -568,8 +519,9 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                         <option key={size} value={size}>{size}/page</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-3 px-3.5 pb-3.5">
+                  }
+                >
+                  <div className="space-y-3">
                     <SidebarSelect
                       label="Add grouping"
                       value={groupToAdd}
@@ -599,7 +551,7 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                             key={key}
                             type="button"
                             onClick={() => setGroupKeys((current) => current.filter((item) => item !== key))}
-                            className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary"
+                            className="theme-contrast-hover rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary"
                           >
                             {GROUPABLE_COLUMNS.find((column) => column.key === key)?.label} ×
                           </button>
@@ -607,7 +559,29 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                       </div>
                     )}
                   </div>
-                </section>
+                </CommandPanelSection>
+
+                <CommandPanelSection
+                  icon={Users}
+                  title="Counts"
+                  subtitle="Full filtered result set"
+                  action={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-xl border border-white/20 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20 hover:text-white"
+                      onClick={() => setIsStageSummaryCollapsed((current) => !current)}
+                    >
+                      {isStageSummaryCollapsed ? 'More' : 'Less'}
+                    </Button>
+                  }
+                >
+                  <div className="space-y-3">
+                    <SummaryCountTable title="Stages" rows={displayedStageSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
+                    <SummaryCountTable title="Sources" rows={displayedSourceSummary} rowLimit={summaryRowsToShow} totalCount={sorted.length} dark />
+                  </div>
+                </CommandPanelSection>
 
               </div>
             </div>
@@ -740,19 +714,21 @@ export function LeadTable({ leads, allLeads, options, filters, onFiltersChange, 
                   activeValue={filters.convertedDatePreset}
                   onSelect={(value) => onFiltersChange({ ...filters, convertedDatePreset: value as DatePreset })}
                 />
-                <QuickFilterRow
+                <QuickMultiFilterRow
                   icon={MapPin}
                   label="Location"
-                  options={[{ label: 'All centers', value: 'all' }, ...centerOptions.map((center) => ({ label: center, value: center }))]}
-                  activeValue={filters.center}
-                  onSelect={(value) => onFiltersChange({ ...filters, center: value, associate: 'all' })}
+                  options={centerOptions.map((center) => ({ label: center, value: center }))}
+                  activeValues={filters.center}
+                  allLabel="All centers"
+                  onSelect={(center) => onFiltersChange({ ...filters, center, associate: [] })}
                 />
-                <QuickFilterRow
+                <QuickMultiFilterRow
                   icon={UserRound}
                   label="Associate"
-                  options={[{ label: 'All associates', value: 'all' }, ...centerScopedAssociates.map((associate) => ({ label: associate, value: associate }))]}
-                  activeValue={filters.associate}
-                  onSelect={(value) => onFiltersChange({ ...filters, associate: value })}
+                  options={centerScopedAssociates.map((associate) => ({ label: associate, value: associate }))}
+                  activeValues={filters.associate}
+                  allLabel="All associates"
+                  onSelect={(associate) => onFiltersChange({ ...filters, associate })}
                 />
               </div>
             </div>
@@ -992,6 +968,49 @@ function SidebarStatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CommandPanelSection({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+  children,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section className="lux-section overflow-hidden rounded-xl">
+        <div className="lux-section-header flex items-center justify-between gap-3 px-3.5 py-3">
+          <CollapsibleTrigger asChild>
+            <button type="button" className="theme-contrast-hover flex min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-white/35">
+              <div className="lux-icon-tile flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-white">{title}</p>
+                <p className="mt-0.5 truncate text-[11px] lux-section-header-muted">{subtitle}</p>
+              </div>
+              <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-white/75 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+          {action && <div className="shrink-0">{action}</div>}
+        </div>
+        <CollapsibleContent>
+          <div className="px-3.5 pb-3.5 pt-3">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
+  );
+}
+
 function CollapsedRailButton({
   icon: Icon,
   label,
@@ -1007,7 +1026,7 @@ function CollapsedRailButton({
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-border/70 bg-background/90 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 dark:hover:bg-sky-950/40"
+      className="theme-contrast-hover group flex h-11 w-11 flex-col items-center justify-center rounded-2xl border border-border/70 bg-background/90 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5"
       aria-label={value ? `${label}: ${value}` : label}
       title={value ? `${label}: ${value}` : label}
     >
@@ -1046,7 +1065,68 @@ function QuickFilterRow({
               key={`${label}-${option.value}`}
               type="button"
               onClick={() => onSelect(option.value)}
-              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${active
+              className={`theme-contrast-hover whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${active
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'border-border/50 bg-background/80 text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'}`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function QuickMultiFilterRow({
+  icon: Icon,
+  label,
+  options,
+  activeValues,
+  allLabel,
+  onSelect,
+}: {
+  icon: typeof Sparkles;
+  label: string;
+  options: Array<{ label: string; value: string }>;
+  activeValues: string[];
+  allLabel: string;
+  onSelect: (values: string[]) => void;
+}) {
+  const toggle = (value: string) => {
+    onSelect(
+      activeValues.includes(value)
+        ? activeValues.filter((item) => item !== value)
+        : [...activeValues, value],
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="rounded-xl bg-[linear-gradient(135deg,hsl(var(--dashboard-header)),hsl(var(--dashboard-header-2)))] p-1.5 text-white shadow-sm">
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">{label}</span>
+      </div>
+      <div className="lead-table-controls-strip flex gap-2 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => onSelect([])}
+          className={`theme-contrast-hover whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${activeValues.length === 0
+            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+            : 'border-border/50 bg-background/80 text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'}`}
+        >
+          {allLabel}
+        </button>
+        {options.map((option) => {
+          const active = activeValues.includes(option.value);
+          return (
+            <button
+              key={`${label}-${option.value}`}
+              type="button"
+              onClick={() => toggle(option.value)}
+              className={`theme-contrast-hover whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${active
                 ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                 : 'border-border/50 bg-background/80 text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'}`}
             >
