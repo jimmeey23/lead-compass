@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, Phone, Mail, MessageSquare, ArrowRight, Save, Pencil, RotateCcw } from 'lucide-react';
+import { X, Phone, Mail, MessageSquare, ArrowRight, Save, RotateCcw, CheckCircle2, CircleDashed, Clock3 } from 'lucide-react';
 import type { Lead, AssociateStats } from '@/types/leads';
 import type { LeadOptionSets } from '@/types/leads';
 import { FollowUpTimeline } from './FollowUpTimeline';
@@ -21,14 +21,12 @@ interface Props {
 }
 
 export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscreen = false, onClose }: Props) {
-  const conversionPath = [lead.sourceName, lead.stageName, lead.conversionStatus].filter(Boolean);
-  const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Lead>(lead);
   const updateLead = useUpdateLead();
+  const conversionPath = [draft.sourceName, draft.stageName, draft.conversionStatus].filter(Boolean);
 
   useEffect(() => {
     setDraft(lead);
-    setIsEditing(false);
   }, [lead]);
 
   useEffect(() => {
@@ -67,6 +65,7 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
   };
 
   const resetDraft = () => setDraft(lead);
+  const hasUnsavedChanges = useMemo(() => JSON.stringify(draft) !== JSON.stringify(lead), [draft, lead]);
 
   const handleSave = async () => {
     const mappedSourceId = sourceIdMap[draft.sourceName];
@@ -104,7 +103,6 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
       toast.success('Lead updated in Momence', {
         description: `${normalizePersonName(draft.fullName)} has been synced successfully.`,
       });
-      setIsEditing(false);
     } catch (error) {
       const description = error instanceof Error ? error.message : 'An unexpected error occurred while saving this lead.';
       toast.error('Unable to save lead', { description });
@@ -127,8 +125,22 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
             <p className="mt-0.5 font-mono text-sm text-slate-200">ID: {lead.id}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setIsEditing((current) => !current)} className="h-8 rounded-xl px-2.5 text-white hover:bg-white/10">
-              <Pencil className="h-4 w-4 mr-1.5" /> {isEditing ? 'Preview' : 'Edit'}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetDraft}
+              disabled={!hasUnsavedChanges || updateLead.isPending}
+              className="h-8 rounded-xl px-2.5 text-white hover:bg-white/10 disabled:opacity-40"
+            >
+              <RotateCcw className="h-4 w-4 mr-1.5" /> Reset
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!hasUnsavedChanges || updateLead.isPending}
+              className="h-8 rounded-xl border border-white/20 bg-white text-slate-950 hover:bg-white/90 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4 mr-1.5" /> {updateLead.isPending ? 'Saving…' : 'Save'}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 rounded-xl p-0 text-white hover:bg-white/10">
               <X className="h-4 w-4" />
@@ -145,6 +157,21 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
           <Button size="sm" className="gap-1.5 rounded-xl border border-white/10 bg-white/10 text-xs text-white hover:bg-white/15">
             <MessageSquare className="h-3.5 w-3.5" /> Message
           </Button>
+        </div>
+        <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/10 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <HeaderChip label="Stage" value={draft.stageName || 'Unassigned'} variant="stage" />
+            <HeaderChip label="Status" value={draft.status || 'No status'} variant="status" />
+            <HeaderChip label="Trial" value={draft.trialStatus || 'No trial status'} variant="neutral" />
+            <HeaderChip label="Conversion" value={draft.conversionStatus || 'Not converted'} variant={draft.conversionStatus ? 'success' : 'neutral'} />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">Follow-ups</span>
+              <FollowUpTimeline followUps={draft.followUps} status={draft.status} compact />
+            </div>
+            <CompletionPill lead={draft} />
+          </div>
         </div>
       </div>
 
@@ -177,107 +204,105 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
           </div>
         </Section>
 
-        {isEditing && (
-          <Section title="Editable lead fields">
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-border bg-card/80 p-4">
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Identity</p>
-                  <div className="grid grid-cols-1 gap-3">
-                    <FormField label="Full name">
-                      <Input value={draft.fullName} onChange={(event) => setField('fullName', event.target.value)} />
-                    </FormField>
-                    <FormField label="Phone number">
-                      <Input value={draft.phoneNumber} onChange={(event) => setField('phoneNumber', event.target.value)} />
-                    </FormField>
-                    <FormField label="Email">
-                      <Input value={draft.email} onChange={(event) => setField('email', event.target.value)} />
-                    </FormField>
-                    <FormField label="Created date">
-                      <Input value={draft.createdAt} onChange={(event) => setField('createdAt', event.target.value)} />
-                    </FormField>
-                    <FormField label="Associate">
-                      <SelectField value={draft.associate} options={options.associates} onChange={(value) => setField('associate', value)} />
-                    </FormField>
-                    <FormField label="Center">
-                      <SelectField value={draft.center} options={options.centers} onChange={(value) => setField('center', value)} />
-                    </FormField>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card/80 p-4">
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
-                  <div className="grid grid-cols-1 gap-3">
-                    <FormField label="Source">
-                      <SelectField value={draft.sourceName} options={options.sourceNames} onChange={(value) => setField('sourceName', value)} />
-                    </FormField>
-                    <FormField label="Stage">
-                      <SelectField value={draft.stageName} options={options.stageNames} onChange={(value) => setField('stageName', value)} />
-                    </FormField>
-                    <FormField label="Status">
-                      <SelectField value={draft.status} options={options.statuses} onChange={(value) => setField('status', value)} />
-                    </FormField>
-                    <FormField label="Channel">
-                      <SelectField value={draft.channel} options={options.channels} onChange={(value) => setField('channel', value)} />
-                    </FormField>
-                    <FormField label="Type">
-                      <Input value={draft.classType} onChange={(event) => setField('classType', event.target.value)} />
-                    </FormField>
-                    <FormField label="Conversion status">
-                      <SelectField value={draft.conversionStatus} options={options.conversionStatuses} onChange={(value) => setField('conversionStatus', value)} />
-                    </FormField>
-                    <FormField label="Trial status">
-                      <SelectField value={draft.trialStatus} options={options.trialStatuses} onChange={(value) => setField('trialStatus', value)} />
-                    </FormField>
-                  </div>
+        <Section title="Editable lead fields">
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card/80 p-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Identity</p>
+                <div className="grid grid-cols-1 gap-3">
+                  <FormField label="Full name">
+                    <Input value={draft.fullName} onChange={(event) => setField('fullName', event.target.value)} />
+                  </FormField>
+                  <FormField label="Phone number">
+                    <Input value={draft.phoneNumber} onChange={(event) => setField('phoneNumber', event.target.value)} />
+                  </FormField>
+                  <FormField label="Email">
+                    <Input value={draft.email} onChange={(event) => setField('email', event.target.value)} />
+                  </FormField>
+                  <FormField label="Created date">
+                    <Input value={draft.createdAt} onChange={(event) => setField('createdAt', event.target.value)} />
+                  </FormField>
+                  <FormField label="Associate">
+                    <SelectField value={draft.associate} options={options.associates} onChange={(value) => setField('associate', value)} />
+                  </FormField>
+                  <FormField label="Center">
+                    <SelectField value={draft.center} options={options.centers} onChange={(value) => setField('center', value)} />
+                  </FormField>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border bg-card/80 p-4">
-                <FormField label="Remarks">
-                  <textarea
-                    value={draft.remarks}
-                    onChange={(event) => setField('remarks', event.target.value)}
-                    className="min-h-[110px] w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/30"
-                  />
-                </FormField>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card/80 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground">Follow-up planner</p>
-                  <p className="text-[11px] text-muted-foreground">Grid layout</p>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {draft.followUps.map((followUp) => (
-                    <div key={followUp.index} className="rounded-2xl border border-border bg-background/65 p-3 shadow-sm">
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">FU {followUp.index}</span>
-                        <span className="text-[10px] text-muted-foreground">Schedule + notes</span>
-                      </div>
-                      <div className="space-y-3">
-                        <Input value={followUp.date} onChange={(event) => setFollowUpField(followUp.index, 'date', event.target.value)} placeholder={`FU ${followUp.index} date`} />
-                        <Input value={followUp.comment} onChange={(event) => setFollowUpField(followUp.index, 'comment', event.target.value)} placeholder={`FU ${followUp.index} comment`} />
-                      </div>
-                    </div>
-                  ))}
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
+                <div className="grid grid-cols-1 gap-3">
+                  <FormField label="Source">
+                    <SelectField value={draft.sourceName} options={options.sourceNames} onChange={(value) => setField('sourceName', value)} />
+                  </FormField>
+                  <FormField label="Stage">
+                    <SelectField value={draft.stageName} options={options.stageNames} onChange={(value) => setField('stageName', value)} />
+                  </FormField>
+                  <FormField label="Status">
+                    <SelectField value={draft.status} options={options.statuses} onChange={(value) => setField('status', value)} />
+                  </FormField>
+                  <FormField label="Channel">
+                    <SelectField value={draft.channel} options={options.channels} onChange={(value) => setField('channel', value)} />
+                  </FormField>
+                  <FormField label="Type">
+                    <Input value={draft.classType} onChange={(event) => setField('classType', event.target.value)} />
+                  </FormField>
+                  <FormField label="Conversion status">
+                    <SelectField value={draft.conversionStatus} options={options.conversionStatuses} onChange={(value) => setField('conversionStatus', value)} />
+                  </FormField>
+                  <FormField label="Trial status">
+                    <SelectField value={draft.trialStatus} options={options.trialStatuses} onChange={(value) => setField('trialStatus', value)} />
+                  </FormField>
                 </div>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={resetDraft} className="rounded-xl border-border bg-background/80 text-foreground hover:bg-muted">
-                  <RotateCcw className="h-4 w-4 mr-1.5" /> Reset changes
-                </Button>
-                <Button type="button" onClick={handleSave} disabled={updateLead.isPending} className="rounded-xl gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Save className="h-4 w-4" /> {updateLead.isPending ? 'Saving…' : 'Save to Momence'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Saves are sent securely through the backend using the configured <code>MOMENCE_ALL_COOKIES</code> secret. Source IDs are resolved from imported lead data, and stage IDs are used when available.
-              </p>
             </div>
-          </Section>
-        )}
+
+            <div className="rounded-2xl border border-border bg-card/80 p-4">
+              <FormField label="Remarks">
+                <textarea
+                  value={draft.remarks}
+                  onChange={(event) => setField('remarks', event.target.value)}
+                  className="min-h-[110px] w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/30"
+                />
+              </FormField>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card/80 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground">Follow-up planner</p>
+                <p className="text-[11px] text-muted-foreground">Grid layout</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {draft.followUps.map((followUp) => (
+                  <div key={followUp.index} className="rounded-2xl border border-border bg-background/65 p-3 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground">FU {followUp.index}</span>
+                      <span className="text-[10px] text-muted-foreground">Schedule + notes</span>
+                    </div>
+                    <div className="space-y-3">
+                      <Input value={followUp.date} onChange={(event) => setFollowUpField(followUp.index, 'date', event.target.value)} placeholder={`FU ${followUp.index} date`} />
+                      <Input value={followUp.comment} onChange={(event) => setFollowUpField(followUp.index, 'comment', event.target.value)} placeholder={`FU ${followUp.index} comment`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={resetDraft} disabled={!hasUnsavedChanges || updateLead.isPending} className="rounded-xl border-border bg-background/80 text-foreground hover:bg-muted disabled:opacity-50">
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Reset changes
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={!hasUnsavedChanges || updateLead.isPending} className="rounded-xl gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                <Save className="h-4 w-4" /> {updateLead.isPending ? 'Saving…' : 'Save to Momence'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Saves are sent securely through the backend using the configured <code>MOMENCE_ALL_COOKIES</code> secret. Source IDs are resolved from imported lead data, and stage IDs are used when available.
+            </p>
+          </div>
+        </Section>
 
         {/* Contact Info */}
         <Section title="Contact Details">
@@ -362,6 +387,66 @@ export function LeadDrillDown({ lead, allLeads, options, associateStats, fullscr
   return createPortal(content, document.body);
 }
 
+function HeaderChip({
+  label,
+  value,
+  variant,
+}: {
+  label: string;
+  value: string;
+  variant: 'stage' | 'status' | 'success' | 'neutral';
+}) {
+  const className = {
+    stage: 'border-rose-200/30 bg-rose-50/15 text-white',
+    status: 'border-sky-200/30 bg-sky-50/15 text-white',
+    success: 'border-emerald-200/30 bg-emerald-50/15 text-white',
+    neutral: 'border-white/15 bg-white/10 text-slate-100',
+  }[variant];
+
+  return (
+    <span className={`inline-flex min-h-9 max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${className}`}>
+      <span className="shrink-0 font-semibold uppercase tracking-[0.16em] text-[9px] text-slate-300">{label}</span>
+      <span className="truncate font-semibold">{value}</span>
+    </span>
+  );
+}
+
+function CompletionPill({ lead }: { lead: Lead }) {
+  const converted = Boolean(lead.conversionStatus || lead.convertedAt);
+  const trialDone = /completed|attended|done/i.test(`${lead.trialStatus} ${lead.stageName}`);
+  const hasOpenFollowUp = lead.followUps.some((followUp) => followUp.date && followUp.date !== '-' && (!followUp.comment || followUp.comment === '-'));
+
+  if (converted) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/30 bg-emerald-50/15 px-3 py-1.5 text-xs font-semibold text-white">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-200" /> Converted
+      </span>
+    );
+  }
+
+  if (trialDone) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/30 bg-amber-50/15 px-3 py-1.5 text-xs font-semibold text-white">
+        <CheckCircle2 className="h-3.5 w-3.5 text-amber-200" /> Trial completed
+      </span>
+    );
+  }
+
+  if (hasOpenFollowUp) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200/30 bg-sky-50/15 px-3 py-1.5 text-xs font-semibold text-white">
+        <Clock3 className="h-3.5 w-3.5 text-sky-200" /> Follow-up pending
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+      <CircleDashed className="h-3.5 w-3.5 text-slate-200" /> In progress
+    </span>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="lux-panel overflow-hidden rounded-2xl">
@@ -396,7 +481,7 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</label>
+      <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</div>
       {children}
     </div>
   );
