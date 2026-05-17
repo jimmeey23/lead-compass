@@ -33,7 +33,7 @@ const lead = (overrides: Partial<Lead>): Lead => ({
 });
 
 describe('journey flow', () => {
-  it('counts the main journey stages and branch exits', () => {
+  it('counts journey progression cumulatively and branch exits separately', () => {
     const result = buildJourneyFlow([
       lead({ id: 'new', stageName: 'New Lead' }),
       lead({ id: 'contacted', stageName: 'Contacted' }),
@@ -48,10 +48,10 @@ describe('journey flow', () => {
     expect(result.totalLeads).toBe(8);
     expect(result.stages.map((stage) => [stage.key, stage.count])).toEqual([
       ['source', 8],
-      ['newLead', 1],
-      ['contacted', 1],
-      ['trialScheduled', 2],
-      ['trialCompleted', 1],
+      ['newLead', 8],
+      ['contacted', 7],
+      ['trialScheduled', 4],
+      ['trialCompleted', 2],
       ['converted', 1],
     ]);
     expect(result.branches.map((branch) => [branch.key, branch.count])).toEqual([

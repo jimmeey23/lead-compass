@@ -93,15 +93,13 @@ function isNewLead(lead: Lead): boolean {
   return includesAny(normalizeLeadText(lead), [/new lead/, /fresh/, /new enquiry/, /inquiry/, /enquiry/]);
 }
 
-function getPrimaryStage(lead: Lead): JourneyStageKey | null {
+function getReachedStage(lead: Lead): JourneyStageKey {
   if (isSalesConvertedLead(lead)) return 'converted';
-  if (isLost(lead) || isNoResponse(lead)) return null;
-  if (isTrialNotAttended(lead)) return 'trialScheduled';
   if (isTrialCompleted(lead)) return 'trialCompleted';
-  if (isTrialScheduled(lead)) return 'trialScheduled';
-  if (isContacted(lead)) return 'contacted';
+  if (isTrialScheduled(lead) || isTrialNotAttended(lead)) return 'trialScheduled';
+  if (isContacted(lead) || isNoResponse(lead) || isLost(lead)) return 'contacted';
   if (isNewLead(lead)) return 'newLead';
-  return null;
+  return 'newLead';
 }
 
 function percentage(count: number, total: number): number {
@@ -123,9 +121,14 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     converted: 0,
   };
 
+  const stageOrder: JourneyStageKey[] = ['source', 'newLead', 'contacted', 'trialScheduled', 'trialCompleted', 'converted'];
+
   for (const lead of leads) {
-    const stage = getPrimaryStage(lead);
-    if (stage) rawCounts[stage] += 1;
+    const reachedStage = getReachedStage(lead);
+    const reachedIndex = stageOrder.indexOf(reachedStage);
+    for (const stage of stageOrder.slice(1, reachedIndex + 1)) {
+      rawCounts[stage] += 1;
+    }
   }
 
   const stages = STAGE_DEFS.map((stage, index): JourneyStage => {
@@ -157,8 +160,6 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     .slice(0, 8);
 
   const convertedLtv = leads.reduce((sum, lead) => sum + (isSalesConvertedLead(lead) ? Number(lead.ltv) || 0 : 0), 0);
-  const trialCompletionPool = rawCounts.trialCompleted + rawCounts.converted;
-
   return {
     totalLeads,
     stages,
@@ -166,7 +167,7 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     sources,
     insights: {
       conversionRate: percentage(rawCounts.converted, totalLeads),
-      trialYield: percentage(rawCounts.converted, trialCompletionPool),
+      trialYield: percentage(rawCounts.converted, rawCounts.trialCompleted),
       convertedLtv,
       topSource: sources[0] ?? null,
       biggestLeakage: branches.slice().sort((a, b) => b.count - a.count)[0] ?? null,

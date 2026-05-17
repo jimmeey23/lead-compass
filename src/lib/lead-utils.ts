@@ -449,6 +449,18 @@ export function applyLeadFilters(leads: Lead[], filters: FilterState): Lead[] {
   });
 }
 
+export function getDateNeutralFilters(filters: FilterState): FilterState {
+  return {
+    ...filters,
+    datePreset: 'all',
+    customDateFrom: '',
+    customDateTo: '',
+    convertedDatePreset: 'all',
+    convertedDateFrom: '',
+    convertedDateTo: '',
+  };
+}
+
 export function getLeadFieldValue(lead: Lead, key: GroupableLeadKey): string {
   return getLeadGroupLabel(lead, key);
 }

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { applyLeadFilters, buildLeadOptions, getCurrentWeekRangeLabel } from '@/lib/lead-utils';
+import { applyLeadFilters, buildLeadOptions, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
 const COMPARISON_SECRET = '9818';
 const COMPARISON_UNLOCK_STORAGE_KEY = 'lead-compass:comparison-unlocked';
@@ -53,6 +53,7 @@ const Index = () => {
   const [comparisonCode, setComparisonCode] = useState('');
 
   const filteredLeads = useMemo(() => applyLeadFilters(leads, filters), [leads, filters]);
+  const periodicLeads = useMemo(() => applyLeadFilters(leads, getDateNeutralFilters(filters)), [leads, filters]);
   const options = useMemo(() => buildLeadOptions(leads), [leads]);
   const weekRangeLabel = useMemo(() => getCurrentWeekRangeLabel(), []);
   const isTableWorkspace = view === 'table' || view === 'compact';
@@ -189,7 +190,7 @@ const Index = () => {
             {!isTableWorkspace && <LeadFilters filters={filters} onChange={setFilters} leads={leads} />}
             {view === 'table' && <LeadTable leads={filteredLeads} allLeads={leads} options={options} filters={filters} onFiltersChange={setFilters} density="comfortable" />}
             {view === 'compact' && <LeadTable leads={filteredLeads} allLeads={leads} options={options} filters={filters} onFiltersChange={setFilters} density="compact" />}
-            {view === 'periodic' && <PeriodicAnalytics leads={filteredLeads} />}
+            {view === 'periodic' && <PeriodicAnalytics leads={periodicLeads} />}
             {view === 'journey-flow' && <JourneyFlow leads={filteredLeads} />}
             {view === 'stage-board' && <LeadBoard leads={filteredLeads} allLeads={leads} options={options} groupBy="stageName" title="Stage board" />}
             {view === 'center-board' && <LeadBoard leads={filteredLeads} allLeads={leads} options={options} groupBy="center" title="Center board" />}

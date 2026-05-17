@@ -5,6 +5,7 @@ import {
   buildStageBreakdown,
   enrichLeadsWithSalesConversions,
   flattenGroupedLeads,
+  getDateNeutralFilters,
   isSalesConvertedLead,
   normalizeCenterName,
   normalizePersonName,
@@ -214,5 +215,30 @@ describe('lead utils', () => {
     ], filters);
 
     expect(filtered.map((lead) => lead.id)).toEqual(['same-day']);
+  });
+
+  it('can clear date filters while preserving non-date filters for date-free views', () => {
+    const filters: FilterState = {
+      ...defaultFilters,
+      associate: 'Akshay Rane',
+      center: 'Supreme Headquarters, Bandra',
+      sourceName: ['Instagram'],
+      datePreset: 'custom',
+      customDateFrom: '2026-03-01',
+      customDateTo: '2026-03-31',
+      convertedDatePreset: 'custom',
+      convertedDateFrom: '2026-05-01',
+      convertedDateTo: '2026-05-31',
+    };
+
+    expect(getDateNeutralFilters(filters)).toEqual({
+      ...filters,
+      datePreset: 'all',
+      customDateFrom: '',
+      customDateTo: '',
+      convertedDatePreset: 'all',
+      convertedDateFrom: '',
+      convertedDateTo: '',
+    });
   });
 });

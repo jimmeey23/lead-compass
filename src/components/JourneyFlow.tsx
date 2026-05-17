@@ -38,21 +38,21 @@ const STAGE_COLORS = {
 
 const BRANCH_META = {
   noResponse: {
-    path: 'M394 126 C470 42, 580 46, 690 72',
-    labelX: 636,
-    labelY: 46,
+    path: 'M397 124 C462 48, 576 34, 704 54',
+    labelX: 662,
+    labelY: 33,
     color: '#64748b',
   },
   trialNotAttended: {
-    path: 'M558 201 C612 272, 720 284, 820 248',
-    labelX: 706,
-    labelY: 282,
+    path: 'M560 204 C614 286, 722 304, 844 276',
+    labelX: 738,
+    labelY: 307,
     color: '#d97706',
   },
   lost: {
-    path: 'M402 151 C494 208, 580 246, 690 236',
-    labelX: 610,
-    labelY: 225,
+    path: 'M405 153 C438 222, 408 278, 316 292',
+    labelX: 338,
+    labelY: 305,
     color: '#475569',
   },
 } as const;
@@ -243,7 +243,7 @@ export function JourneyFlow({ leads }: JourneyFlowProps) {
                     d={meta.path}
                     fill="none"
                     stroke={meta.color}
-                    strokeWidth={getStrokeWidth(branch.count, flow.totalLeads, 9, 28)}
+                    strokeWidth={getStrokeWidth(branch.count, flow.totalLeads, 4, 15)}
                     strokeLinecap="round"
                     opacity={branch.count > 0 ? 0.78 : 0.18}
                   />
