@@ -7,7 +7,7 @@ import type { LeadOptionSets } from '@/types/leads';
 import { FollowUpTimeline } from './FollowUpTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { buildSourceIdMap, normalizeCenterName, normalizePersonName } from '@/lib/lead-utils';
+import { buildSourceIdMap, isSalesConvertedLead, normalizeCenterName, normalizePersonName } from '@/lib/lead-utils';
 import { buildMomencePayload, useUpdateLead } from '@/hooks/useLeadsData';
 import { toast } from '@/components/ui/sonner';
 
@@ -412,7 +412,7 @@ function HeaderChip({
 }
 
 function CompletionPill({ lead }: { lead: Lead }) {
-  const converted = Boolean(lead.conversionStatus || lead.convertedAt);
+  const converted = isSalesConvertedLead(lead);
   const trialDone = /completed|attended|done/i.test(`${lead.trialStatus} ${lead.stageName}`);
   const hasOpenFollowUp = lead.followUps.some((followUp) => followUp.date && followUp.date !== '-' && (!followUp.comment || followUp.comment === '-'));
 

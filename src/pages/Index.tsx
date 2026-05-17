@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { applyLeadFilters, buildLeadOptions, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
+import { applyLeadFilters, buildLeadOptions, buildLeadPerformanceSummary, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
 const COMPARISON_SECRET = '9818';
 const COMPARISON_UNLOCK_STORAGE_KEY = 'lead-compass:comparison-unlocked';
@@ -44,6 +44,15 @@ function ThemeToggle() {
   );
 }
 
+function HeaderMetric({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'success' }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-card/85 px-3 py-1.5 shadow-sm">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className={`mt-0.5 font-mono-data text-sm font-bold ${tone === 'success' ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'}`}>{value}</p>
+    </div>
+  );
+}
+
 const Index = () => {
   const { data: leads = [], isLoading, error, refetch, isFetching } = useLeadsData();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -54,6 +63,7 @@ const Index = () => {
 
   const filteredLeads = useMemo(() => applyLeadFilters(leads, filters), [leads, filters]);
   const periodicLeads = useMemo(() => applyLeadFilters(leads, getDateNeutralFilters(filters)), [leads, filters]);
+  const performanceSummary = useMemo(() => buildLeadPerformanceSummary(filteredLeads), [filteredLeads]);
   const options = useMemo(() => buildLeadOptions(leads), [leads]);
   const weekRangeLabel = useMemo(() => getCurrentWeekRangeLabel(), []);
   const isTableWorkspace = view === 'table' || view === 'compact';
@@ -110,7 +120,7 @@ const Index = () => {
   return (
     <div className="app-page-bg min-h-screen text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 shadow-[0_1px_0_rgba(15,23,42,0.04),0_18px_50px_-44px_rgba(15,23,42,0.34)] backdrop-blur-2xl dark:bg-background/80 dark:shadow-[0_18px_60px_-42px_rgba(0,0,0,0.92)]">
-        <div className={`${isTableWorkspace ? 'w-full px-4 md:px-6' : 'mx-auto max-w-[1680px] px-4 md:px-6'} flex min-h-16 flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:py-0`}>
+        <div className={`${isTableWorkspace ? 'w-full px-4 md:px-6' : 'mx-auto max-w-[1680px] px-4 md:px-6'} flex min-h-16 flex-col gap-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between`}>
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#7f1231,#9f1d4c,#6d4bc4)] shadow-[0_16px_30px_-18px_rgba(127,18,49,0.72)] ring-1 ring-white/70 dark:ring-rose-200/20">
                 <Zap className="h-4.5 w-4.5 text-white" />
@@ -131,6 +141,16 @@ const Index = () => {
                 )}
               </div>
             </div>
+            {leads.length > 0 && (
+              <div className="order-last w-full basis-full">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <HeaderMetric label="Total" value={performanceSummary.totalLeads.toLocaleString('en-IN')} />
+                  <HeaderMetric label="Trials Done" value={performanceSummary.trialsCompleted.toLocaleString('en-IN')} />
+                  <HeaderMetric label="Converted" value={performanceSummary.convertedLeads.toLocaleString('en-IN')} tone="success" />
+                  <HeaderMetric label="Avg Span" value={performanceSummary.averageConversionSpanDays === null ? '—' : `${performanceSummary.averageConversionSpanDays.toFixed(1)}d`} />
+                </div>
+              </div>
+            )}
             <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3">
               <div className="lead-scroll-area flex min-w-0 flex-1 overflow-x-auto rounded-2xl border border-border/75 bg-muted/70 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] sm:flex-none dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                 {views.map(({ key, label, icon: Icon }) => (

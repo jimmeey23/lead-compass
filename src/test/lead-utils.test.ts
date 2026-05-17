@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyLeadFilters,
+  buildLeadPerformanceSummary,
   buildStageCountSummary,
   buildStageBreakdown,
   enrichLeadsWithSalesConversions,
@@ -239,6 +240,23 @@ describe('lead utils', () => {
       convertedDatePreset: 'all',
       convertedDateFrom: '',
       convertedDateTo: '',
+    });
+  });
+
+  it('summarizes verified conversions and average conversion span from sales-enriched dates only', () => {
+    const summary = buildLeadPerformanceSummary([
+      { ...baseLead, id: 'stage-only-sold', stageName: 'Membership Sold', convertedAt: '', conversionStatus: '' },
+      { ...baseLead, id: 'trial-completed', stageName: 'Trial Completed', trialStatus: 'Completed', convertedAt: '', conversionStatus: '' },
+      { ...baseLead, id: 'converted-a', createdAt: '2026-03-01', convertedAt: '2026-03-11', conversionStatus: 'Converted' },
+      { ...baseLead, id: 'converted-b', createdAt: '01/03/26', convertedAt: '2026-03-21', conversionStatus: 'Converted' },
+      { ...baseLead, id: 'bad-conversion', createdAt: '2026-03-01', convertedAt: '', conversionStatus: 'Converted' },
+    ]);
+
+    expect(summary).toEqual({
+      totalLeads: 5,
+      trialsCompleted: 3,
+      convertedLeads: 2,
+      averageConversionSpanDays: 15,
     });
   });
 });

@@ -181,6 +181,40 @@ export function isSalesConvertedLead(lead: Lead): boolean {
   );
 }
 
+export interface LeadPerformanceSummary {
+  totalLeads: number;
+  trialsCompleted: number;
+  convertedLeads: number;
+  averageConversionSpanDays: number | null;
+}
+
+function isTrialCompletedLead(lead: Lead): boolean {
+  return /trial completed|trial done|trial finished|attended trial|completed/i.test(`${cleanLooseText(lead.stageName)} ${cleanLooseText(lead.trialStatus)}`);
+}
+
+export function buildLeadPerformanceSummary(leads: Lead[]): LeadPerformanceSummary {
+  const convertedLeads = leads.filter(isSalesConvertedLead);
+  const conversionSpans = convertedLeads
+    .map((lead) => {
+      const created = parseFlexibleDate(lead.createdAt);
+      const converted = parseFlexibleDate(lead.convertedAt);
+      if (!created || !converted) return null;
+      return Math.max(0, (converted.getTime() - created.getTime()) / 86400000);
+    })
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+  const averageConversionSpanDays = conversionSpans.length > 0
+    ? Number((conversionSpans.reduce((sum, value) => sum + value, 0) / conversionSpans.length).toFixed(1))
+    : null;
+
+  return {
+    totalLeads: leads.length,
+    trialsCompleted: leads.filter((lead) => isTrialCompletedLead(lead) || isSalesConvertedLead(lead)).length,
+    convertedLeads: convertedLeads.length,
+    averageConversionSpanDays,
+  };
+}
+
 export function formatMomenceDate(dateStr: string): string {
   const date = parseFlexibleDate(dateStr) ?? new Date();
   const year = String(date.getFullYear()).slice(-2);
