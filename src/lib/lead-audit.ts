@@ -21,7 +21,9 @@ export interface LeadAuditIssue {
 
 export interface LeadAuditRecord {
   id: string;
+  leadId: string;
   name: string;
+  leadName: string;
   createdAt: string;
   stageName: string;
   status: string;
@@ -135,7 +137,9 @@ function buildRecord(lead: Lead): LeadAuditRecord {
 
   return {
     id: lead.id,
+    leadId: lead.id,
     name: lead.fullName,
+    leadName: lead.fullName,
     createdAt: lead.createdAt,
     stageName: lead.stageName,
     status: lead.status,

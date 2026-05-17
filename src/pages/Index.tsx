@@ -118,16 +118,17 @@ function auditText(value: unknown): string {
   return '';
 }
 
-function getAuditIssueRows(data: Record<string, unknown>, sections: string[]): AuditIssueRow[] {
+function getAuditIssueRows(data: Record<string, unknown>, sections: string[], leadLabels = new Map<string, string>()): AuditIssueRow[] {
   return sections.flatMap((section) => {
     const value = data[section];
     if (!Array.isArray(value)) return [];
 
     return value.slice(0, 12).map((item): AuditIssueRow => {
       const record = asRecord(item);
+      const leadId = auditText(record?.leadId);
       return {
         category: auditSectionMeta[section]?.label ?? formatAuditLabel(section),
-        leadLabel: auditText(record?.leadName) || auditText(record?.lead) || auditText(record?.name) || auditText(record?.leadId) || 'Multiple',
+        leadLabel: auditText(record?.leadName) || auditText(record?.lead) || auditText(record?.name) || leadLabels.get(leadId) || leadId || 'Multiple',
         severity: auditText(record?.severity) || 'Review',
         reason: auditText(record?.reason) || auditText(record?.detail) || auditText(item),
         evidence: auditText(record?.evidence),
@@ -148,7 +149,17 @@ function copyAuditText(label: string, text: string) {
     .catch(() => toast.error('Unable to copy', { description: 'Clipboard access is unavailable in this browser.' }));
 }
 
-function parseAuditResult(result: unknown): unknown {
+export function parseAuditResult(result: unknown, depth = 0): unknown {
+  if (depth > 3) return result;
+
+  if (typeof result === 'object' && result !== null) {
+    const record = result as Record<string, unknown>;
+    if ('analysis' in record && record.analysis !== undefined) {
+      return parseAuditResult(record.analysis, depth + 1);
+    }
+    return result;
+  }
+
   if (typeof result !== 'string') return result;
 
   const trimmed = result.trim();
@@ -160,13 +171,13 @@ function parseAuditResult(result: unknown): unknown {
   if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[')) return result;
 
   try {
-    return JSON.parse(jsonCandidate);
+    return parseAuditResult(JSON.parse(jsonCandidate), depth + 1);
   } catch {
     return result;
   }
 }
 
-function AuditResultView({ result }: { result: unknown }) {
+function AuditResultView({ result, payload }: { result: unknown; payload?: ReturnType<typeof buildLeadAuditPayload> | null }) {
   const parsedResult = parseAuditResult(result);
 
   if (typeof parsedResult === 'object' && parsedResult !== null && 'error' in parsedResult) {
@@ -187,7 +198,13 @@ function AuditResultView({ result }: { result: unknown }) {
 
   const data = parsedResult as Record<string, unknown>;
   const issueSections = ['urgentIssues', 'followUpTimingIssues', 'stageDiscrepancies', 'copyPasteSignals'];
-  const issueRows = getAuditIssueRows(data, issueSections);
+  const leadLabels = new Map<string, string>();
+  payload?.records.forEach((record) => {
+    leadLabels.set(record.id, record.name);
+    leadLabels.set(record.leadId, record.leadName);
+  });
+  payload?.deterministicIssues.forEach((issue) => leadLabels.set(issue.leadId, issue.leadName));
+  const issueRows = getAuditIssueRows(data, issueSections, leadLabels);
   const recommendedActions = Array.isArray(data.recommendedActions) ? data.recommendedActions : [];
   const summaryText = auditText(data.executiveSummary);
   const reportText = [
@@ -276,7 +293,7 @@ function AuditResultView({ result }: { result: unknown }) {
       )}
 
       {issueSections.map((section) => (
-        <AuditSection key={section} title={section} value={data[section]} />
+        <AuditSection key={section} title={section} value={data[section]} leadLabels={leadLabels} />
       ))}
 
       {recommendedActions.length > 0 && (
@@ -298,7 +315,7 @@ function AuditResultView({ result }: { result: unknown }) {
   );
 }
 
-function AuditSection({ title, value }: { title: string; value: unknown }) {
+function AuditSection({ title, value, leadLabels = new Map<string, string>() }: { title: string; value: unknown; leadLabels?: Map<string, string> }) {
   if (!Array.isArray(value) || value.length === 0) return null;
 
   return (
@@ -312,7 +329,11 @@ function AuditSection({ title, value }: { title: string; value: unknown }) {
         <div key={index} className="rounded-2xl border border-border bg-card/80 p-4 text-sm shadow-sm">
           {typeof item === 'object' && item !== null ? (
             <div className="space-y-1.5">
-              {('leadName' in item || 'leadId' in item) && <p className="text-xs font-semibold text-foreground">Lead: {String((item as Record<string, unknown>).leadName ?? (item as Record<string, unknown>).leadId)}</p>}
+              {('leadName' in item || 'leadId' in item) && (
+                <p className="text-xs font-semibold text-foreground">
+                  Lead: {String((item as Record<string, unknown>).leadName ?? leadLabels.get(String((item as Record<string, unknown>).leadId ?? '')) ?? (item as Record<string, unknown>).leadId)}
+                </p>
+              )}
               {'severity' in item && <Badge variant={severityBadgeVariant(String((item as Record<string, unknown>).severity))} className="text-[10px] uppercase tracking-[0.12em]">{String((item as Record<string, unknown>).severity)}</Badge>}
               {'reason' in item && <p className="font-semibold text-foreground">{String((item as Record<string, unknown>).reason)}</p>}
               {'evidence' in item && <p className="text-xs leading-relaxed text-muted-foreground">{String((item as Record<string, unknown>).evidence)}</p>}
@@ -707,7 +728,7 @@ const Index = () => {
             )}
 
             {!leadAudit.isPending && auditResult && (
-              <AuditResultView result={auditResult} />
+              <AuditResultView result={auditResult} payload={auditPayload} />
             )}
 
             {!leadAudit.isPending && !auditResult && auditPayload && (
