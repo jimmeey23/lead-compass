@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useLeadsData } from '@/hooks/useLeadsData';
+import { useLeadAudit } from '@/hooks/useLeadAudit';
 import { LeadTable } from '@/components/LeadTable';
 import { LeadFilters } from '@/components/LeadFilters';
 import { AssociateOverview } from '@/components/AssociateOverview';
@@ -11,11 +12,12 @@ import { JourneyFlow } from '@/components/JourneyFlow';
 import { PeriodicAnalytics } from '@/components/PeriodicAnalytics';
 import { defaultFilters } from '@/types/leads';
 import type { FilterState, ViewMode, Lead } from '@/types/leads';
-import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun, Route } from 'lucide-react';
+import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun, Route, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { buildLeadAuditPayload } from '@/lib/lead-audit';
 import { applyLeadFilters, buildLeadOptions, buildLeadPerformanceSummary, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
 const COMPARISON_SECRET = '9818';
@@ -53,6 +55,105 @@ function HeaderMetric({ label, value, tone = 'default' }: { label: string; value
   );
 }
 
+function AuditMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card/80 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-1 font-mono-data text-lg font-bold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function AuditLocalPreview({ payload }: { payload: ReturnType<typeof buildLeadAuditPayload> }) {
+  const topIssues = payload.deterministicIssues.slice(0, 8);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Local pre-audit found {payload.summary.deterministicIssueCount} possible issues before DeepSeek review.
+      </p>
+      {topIssues.map((issue, index) => (
+        <AuditIssueCard key={`${issue.leadId}-${issue.category}-${index}`} issue={issue} />
+      ))}
+    </div>
+  );
+}
+
+function AuditResultView({ result }: { result: unknown }) {
+  if (typeof result === 'object' && result !== null && 'error' in result) {
+    return (
+      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-foreground">
+        {String((result as { error: unknown }).error)}
+      </div>
+    );
+  }
+
+  if (typeof result !== 'object' || result === null) {
+    return <pre className="whitespace-pre-wrap rounded-2xl border border-border bg-muted/45 p-4 text-xs text-foreground">{String(result)}</pre>;
+  }
+
+  const data = result as Record<string, unknown>;
+  const issueSections = ['urgentIssues', 'followUpTimingIssues', 'stageDiscrepancies', 'copyPasteSignals'];
+
+  return (
+    <div className="space-y-4">
+      {typeof data.executiveSummary === 'string' && (
+        <div className="rounded-2xl border border-border bg-card/80 p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Executive summary</p>
+          <p className="mt-2 text-sm leading-relaxed text-foreground">{data.executiveSummary}</p>
+        </div>
+      )}
+
+      {issueSections.map((section) => (
+        <AuditSection key={section} title={section} value={data[section]} />
+      ))}
+
+      <AuditSection title="recommendedActions" value={data.recommendedActions} />
+    </div>
+  );
+}
+
+function AuditSection({ title, value }: { title: string; value: unknown }) {
+  if (!Array.isArray(value) || value.length === 0) return null;
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {title.replace(/([A-Z])/g, ' $1')}
+      </h3>
+      {value.slice(0, 10).map((item, index) => (
+        <div key={index} className="rounded-2xl border border-border bg-card/80 p-4 text-sm">
+          {typeof item === 'object' && item !== null ? (
+            <div className="space-y-1.5">
+              {'leadId' in item && <p className="font-mono-data text-xs text-muted-foreground">Lead ID: {String((item as Record<string, unknown>).leadId)}</p>}
+              {'severity' in item && <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{String((item as Record<string, unknown>).severity)}</p>}
+              {'reason' in item && <p className="font-semibold text-foreground">{String((item as Record<string, unknown>).reason)}</p>}
+              {'evidence' in item && <p className="text-xs leading-relaxed text-muted-foreground">{String((item as Record<string, unknown>).evidence)}</p>}
+              {'recommendedAction' in item && <p className="text-xs leading-relaxed text-foreground">{String((item as Record<string, unknown>).recommendedAction)}</p>}
+            </div>
+          ) : (
+            <p className="text-sm text-foreground">{String(item)}</p>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function AuditIssueCard({ issue }: { issue: ReturnType<typeof buildLeadAuditPayload>['deterministicIssues'][number] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card/80 p-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-semibold text-foreground">{issue.leadName}</p>
+        <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{issue.severity}</span>
+      </div>
+      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">{issue.category.replace(/_/g, ' ')}</p>
+      <p className="mt-1 text-sm text-foreground">{issue.detail}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{issue.evidence}</p>
+    </div>
+  );
+}
+
 const Index = () => {
   const { data: leads = [], isLoading, error, refetch, isFetching } = useLeadsData();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -60,6 +161,10 @@ const Index = () => {
   const [isComparisonUnlocked, setIsComparisonUnlocked] = useState(false);
   const [isComparisonDialogOpen, setIsComparisonDialogOpen] = useState(false);
   const [comparisonCode, setComparisonCode] = useState('');
+  const [isAuditDialogOpen, setIsAuditDialogOpen] = useState(false);
+  const [auditPayload, setAuditPayload] = useState<ReturnType<typeof buildLeadAuditPayload> | null>(null);
+  const [auditResult, setAuditResult] = useState<unknown>(null);
+  const leadAudit = useLeadAudit();
 
   const filteredLeads = useMemo(() => applyLeadFilters(leads, filters), [leads, filters]);
   const periodicLeads = useMemo(() => applyLeadFilters(leads, getDateNeutralFilters(filters)), [leads, filters]);
@@ -104,6 +209,29 @@ const Index = () => {
     setComparisonCode('');
     setView('comparison');
     toast.success('Comparison view unlocked');
+  };
+
+  const runLeadAudit = async () => {
+    if (filteredLeads.length === 0) {
+      toast.error('No leads to analyze', {
+        description: 'Adjust filters so the dashboard has leads before running the audit.',
+      });
+      return;
+    }
+
+    const payload = buildLeadAuditPayload(filteredLeads);
+    setAuditPayload(payload);
+    setAuditResult(null);
+    setIsAuditDialogOpen(true);
+
+    try {
+      const result = await leadAudit.mutateAsync(payload);
+      setAuditResult(result.analysis ?? result);
+    } catch (error) {
+      const description = error instanceof Error ? error.message : 'DeepSeek analysis failed.';
+      toast.error('Unable to run DeepSeek audit', { description });
+      setAuditResult({ error: description });
+    }
   };
 
   const views: Array<{ key: ViewMode; label: string; icon: typeof LayoutList }> = [
@@ -169,6 +297,16 @@ const Index = () => {
                 ))}
               </div>
               <ThemeToggle />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runLeadAudit}
+                disabled={leadAudit.isPending}
+                className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
+              >
+                <BrainCircuit className={`h-3.5 w-3.5 ${leadAudit.isPending ? 'animate-pulse' : ''}`} />
+                AI Audit
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -263,6 +401,50 @@ const Index = () => {
           <DialogFooter className="border-t border-border/30 px-6 py-4">
             <Button variant="outline" className="rounded-xl" onClick={() => setIsComparisonDialogOpen(false)}>Cancel</Button>
             <Button className="rounded-xl" onClick={unlockComparisonView}>Unlock</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAuditDialogOpen} onOpenChange={setIsAuditDialogOpen}>
+        <DialogContent className="max-h-[86vh] overflow-hidden rounded-3xl border-border/50 bg-background/95 p-0 sm:max-w-3xl">
+          <div className="border-b border-border/30 px-6 py-5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <BrainCircuit className="h-4 w-4 text-primary" /> DeepSeek lead audit
+              </DialogTitle>
+              <DialogDescription>
+                Analyzes the filtered dashboard data, capped to a maximum one-month lead window.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="lead-scroll-area max-h-[62vh] space-y-4 overflow-auto px-6 py-5">
+            {auditPayload && (
+              <div className="grid gap-3 sm:grid-cols-4">
+                <AuditMetric label="Window leads" value={`${auditPayload.analysisWindow.includedLeads}/${auditPayload.analysisWindow.requestedLeads}`} />
+                <AuditMetric label="Active" value={String(auditPayload.summary.activeLeads)} />
+                <AuditMetric label="Local flags" value={String(auditPayload.summary.deterministicIssueCount)} />
+                <AuditMetric label="Max period" value={`${auditPayload.analysisWindow.maxDays}d`} />
+              </div>
+            )}
+
+            {leadAudit.isPending && (
+              <div className="rounded-2xl border border-border bg-muted/45 p-5 text-sm text-muted-foreground">
+                Running DeepSeek audit on compact issue payload...
+              </div>
+            )}
+
+            {!leadAudit.isPending && auditResult && (
+              <AuditResultView result={auditResult} />
+            )}
+
+            {!leadAudit.isPending && !auditResult && auditPayload && (
+              <AuditLocalPreview payload={auditPayload} />
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-border/30 px-6 py-4">
+            <Button variant="outline" className="rounded-xl" onClick={() => setIsAuditDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
