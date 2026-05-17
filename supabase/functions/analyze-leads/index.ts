@@ -13,6 +13,7 @@ const corsHeaders = {
 };
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_MODEL = 'deepseek-v4-flash';
 
 function compactJson(value: unknown): string {
   return JSON.stringify(value);
@@ -37,7 +38,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const model = Deno.env.get('DEEPSEEK_MODEL') || 'deepseek-chat';
     const response = await fetch(DEEPSEEK_URL, {
       method: 'POST',
       headers: {
@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
+        model: DEEPSEEK_MODEL,
         temperature: 0.1,
         max_tokens: 1100,
         response_format: { type: 'json_object' },
@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       success: true,
-      model: (body as { model?: string })?.model ?? model,
+      model: (body as { model?: string })?.model ?? DEEPSEEK_MODEL,
       usage: (body as { usage?: unknown })?.usage,
       analysis,
     }), {
