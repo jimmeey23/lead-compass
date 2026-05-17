@@ -50,7 +50,7 @@ export interface AssociateStats {
   centersCovered: number;
 }
 
-export type ViewMode = 'table' | 'compact' | 'periodic' | 'stage-board' | 'center-board' | 'associate' | 'comparison';
+export type ViewMode = 'table' | 'compact' | 'periodic' | 'journey-flow' | 'stage-board' | 'center-board' | 'associate' | 'comparison';
 
 export type GroupableLeadKey =
   | 'fullName'

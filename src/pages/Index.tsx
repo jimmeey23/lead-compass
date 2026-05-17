@@ -7,10 +7,11 @@ import { LeadFilters } from '@/components/LeadFilters';
 import { AssociateOverview } from '@/components/AssociateOverview';
 import { LeadBoard } from '@/components/LeadBoard';
 import { LeadComparison } from '@/components/LeadComparison';
+import { JourneyFlow } from '@/components/JourneyFlow';
 import { PeriodicAnalytics } from '@/components/PeriodicAnalytics';
 import { defaultFilters } from '@/types/leads';
 import type { FilterState, ViewMode, Lead } from '@/types/leads';
-import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun } from 'lucide-react';
+import { RefreshCw, LayoutList, Users, Loader2, Zap, Rows3, GitCompareArrows, Building2, Workflow, Lock, CalendarRange, Moon, Sun, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
@@ -98,6 +99,7 @@ const Index = () => {
     { key: 'table', label: 'Detailed', icon: LayoutList },
     { key: 'compact', label: 'Compact', icon: Rows3 },
     { key: 'periodic', label: 'Periodic', icon: CalendarRange },
+    { key: 'journey-flow', label: 'Journey Flow', icon: Route },
     { key: 'stage-board', label: 'Stage Board', icon: Workflow },
     { key: 'center-board', label: 'Center Board', icon: Building2 },
     { key: 'associate', label: 'Associates', icon: Users },
@@ -188,6 +190,7 @@ const Index = () => {
             {view === 'table' && <LeadTable leads={filteredLeads} allLeads={leads} options={options} filters={filters} onFiltersChange={setFilters} density="comfortable" />}
             {view === 'compact' && <LeadTable leads={filteredLeads} allLeads={leads} options={options} filters={filters} onFiltersChange={setFilters} density="compact" />}
             {view === 'periodic' && <PeriodicAnalytics leads={filteredLeads} />}
+            {view === 'journey-flow' && <JourneyFlow leads={filteredLeads} />}
             {view === 'stage-board' && <LeadBoard leads={filteredLeads} allLeads={leads} options={options} groupBy="stageName" title="Stage board" />}
             {view === 'center-board' && <LeadBoard leads={filteredLeads} allLeads={leads} options={options} groupBy="center" title="Center board" />}
             {view === 'associate' && <AssociateOverview leads={filteredLeads} allLeads={leads} options={options} />}
