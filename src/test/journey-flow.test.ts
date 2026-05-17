@@ -60,6 +60,7 @@ describe('journey flow', () => {
       ['lost', 1],
     ]);
     expect(result.insights.conversionRate).toBe(12.5);
+    expect(result.insights.trialYield).toBe(50);
     expect(result.insights.convertedLtv).toBe(12000);
     expect(result.insights.biggestLeakage?.label).toBe('No response');
   });

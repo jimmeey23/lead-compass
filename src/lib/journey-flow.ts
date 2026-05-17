@@ -130,11 +130,12 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
 
   const stages = STAGE_DEFS.map((stage, index): JourneyStage => {
     const previous = index > 0 ? rawCounts[STAGE_DEFS[index - 1].key] : 0;
+    const previousDenominator = Math.max(previous, rawCounts[stage.key]);
     return {
       ...stage,
       count: rawCounts[stage.key],
       percentage: percentage(rawCounts[stage.key], totalLeads),
-      previousConversionRate: index === 0 ? null : percentage(rawCounts[stage.key], previous),
+      previousConversionRate: index === 0 ? null : percentage(rawCounts[stage.key], previousDenominator),
     };
   });
 
@@ -156,7 +157,7 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     .slice(0, 8);
 
   const convertedLtv = leads.reduce((sum, lead) => sum + (isSalesConvertedLead(lead) ? Number(lead.ltv) || 0 : 0), 0);
-  const trialCompleted = rawCounts.trialCompleted;
+  const trialCompletionPool = rawCounts.trialCompleted + rawCounts.converted;
 
   return {
     totalLeads,
@@ -165,7 +166,7 @@ export function buildJourneyFlow(leads: Lead[]): JourneyFlowData {
     sources,
     insights: {
       conversionRate: percentage(rawCounts.converted, totalLeads),
-      trialYield: percentage(rawCounts.converted, trialCompleted),
+      trialYield: percentage(rawCounts.converted, trialCompletionPool),
       convertedLtv,
       topSource: sources[0] ?? null,
       biggestLeakage: branches.slice().sort((a, b) => b.count - a.count)[0] ?? null,
