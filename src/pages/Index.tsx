@@ -150,7 +150,7 @@ function copyAuditText(label: string, text: string) {
 }
 
 export function parseAuditResult(result: unknown, depth = 0): unknown {
-  if (depth > 3) return result;
+  if (depth > 6) return result;
 
   if (typeof result === 'object' && result !== null) {
     const record = result as Record<string, unknown>;
@@ -163,12 +163,14 @@ export function parseAuditResult(result: unknown, depth = 0): unknown {
   if (typeof result !== 'string') return result;
 
   const trimmed = result.trim();
-  const jsonCandidate = trimmed
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const unfencedCandidate = trimmed
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
+  const jsonCandidate = fencedMatch?.[1]?.trim() ?? unfencedCandidate;
 
-  if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[')) return result;
+  if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[') && !jsonCandidate.startsWith('"')) return result;
 
   try {
     return parseAuditResult(JSON.parse(jsonCandidate), depth + 1);
