@@ -58,4 +58,24 @@ describe('audit result parsing', () => {
       urgentIssues: [{ leadName: 'Test Lead', severity: 'high', reason: 'Needs review' }],
     });
   });
+
+  it('extracts unfenced JSON when the provider wraps the report in prose', () => {
+    const result = parseAuditResult([
+      'Here is the formatted audit report:',
+      JSON.stringify({
+        executiveSummary: 'Unfenced summary',
+        urgentIssues: [{ leadName: 'Raw JSON Lead', severity: 'high', reason: 'Displayed as JSON' }],
+        followUpTimingIssues: [],
+        stageDiscrepancies: [],
+        copyPasteSignals: [],
+        recommendedActions: ['Render as structured report'],
+      }),
+    ].join('\n\n'));
+
+    expect(result).toMatchObject({
+      executiveSummary: 'Unfenced summary',
+      urgentIssues: [{ leadName: 'Raw JSON Lead', severity: 'high', reason: 'Displayed as JSON' }],
+      recommendedActions: ['Render as structured report'],
+    });
+  });
 });

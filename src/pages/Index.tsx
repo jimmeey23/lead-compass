@@ -149,6 +149,63 @@ function copyAuditText(label: string, text: string) {
     .catch(() => toast.error('Unable to copy', { description: 'Clipboard access is unavailable in this browser.' }));
 }
 
+function extractEmbeddedJson(text: string): string | null {
+  for (let start = 0; start < text.length; start += 1) {
+    const opener = text[start];
+    if (opener !== '{' && opener !== '[') continue;
+
+    const stack: string[] = [];
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < text.length; index += 1) {
+      const char = text[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (char === '\\') {
+          escaped = true;
+          continue;
+        }
+
+        if (char === '"') inString = false;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === '{' || char === '[') {
+        stack.push(char);
+        continue;
+      }
+
+      if (char !== '}' && char !== ']') continue;
+
+      const expectedOpener = char === '}' ? '{' : '[';
+      if (stack.pop() !== expectedOpener) break;
+
+      if (stack.length === 0) {
+        const candidate = text.slice(start, index + 1);
+        try {
+          JSON.parse(candidate);
+          return candidate;
+        } catch {
+          break;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export function parseAuditResult(result: unknown, depth = 0): unknown {
   if (depth > 6) return result;
 
@@ -168,15 +225,20 @@ export function parseAuditResult(result: unknown, depth = 0): unknown {
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
-  const jsonCandidate = fencedMatch?.[1]?.trim() ?? unfencedCandidate;
+  const directCandidate = fencedMatch?.[1]?.trim() ?? unfencedCandidate;
+  const candidates = [directCandidate, extractEmbeddedJson(trimmed)].filter((candidate): candidate is string => Boolean(candidate));
 
-  if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[') && !jsonCandidate.startsWith('"')) return result;
+  for (const jsonCandidate of candidates) {
+    if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[') && !jsonCandidate.startsWith('"')) continue;
 
-  try {
-    return parseAuditResult(JSON.parse(jsonCandidate), depth + 1);
-  } catch {
-    return result;
+    try {
+      return parseAuditResult(JSON.parse(jsonCandidate), depth + 1);
+    } catch {
+      // Try the next candidate before falling back to raw text.
+    }
   }
+
+  return result;
 }
 
 function AuditResultView({ result, payload }: { result: unknown; payload?: ReturnType<typeof buildLeadAuditPayload> | null }) {
@@ -255,12 +317,12 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
       </div>
 
       {issueRows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/80">
+        <div className="rounded-2xl border border-border bg-card/80">
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
             <ClipboardList className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Analysis table</h3>
           </div>
-          <Table>
+          <Table className="min-w-[920px]">
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className="h-10 text-xs">Category</TableHead>
@@ -700,7 +762,7 @@ const Index = () => {
       </Dialog>
 
       <Dialog open={isAuditDialogOpen} onOpenChange={setIsAuditDialogOpen}>
-        <DialogContent className="max-h-[86vh] overflow-hidden rounded-3xl border-border/50 bg-background/95 p-0 sm:max-w-3xl">
+        <DialogContent className="max-h-[86vh] overflow-hidden rounded-3xl border-border/50 bg-background/95 p-0 sm:max-w-5xl">
           <div className="border-b border-border/30 px-6 py-5">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
