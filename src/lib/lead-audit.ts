@@ -52,13 +52,18 @@ export interface LeadAuditPayload {
     deterministicIssueCount: number;
   };
   timelineGuidance: string[];
+  deterministicIssueBreakdown: {
+    byCategory: Array<{ category: LeadAuditIssue['category']; count: number; high: number; medium: number; low: number }>;
+    bySeverity: Array<{ severity: LeadAuditSeverity; count: number }>;
+    topAffectedLeads: Array<{ leadId: string; leadName: string; count: number; categories: LeadAuditIssue['category'][] }>;
+  };
   deterministicIssues: LeadAuditIssue[];
   records: LeadAuditRecord[];
 }
 
 const MAX_ANALYSIS_DAYS = 31;
-const MAX_RECORDS_FOR_AI = 80;
-const MAX_ISSUES_FOR_AI = 120;
+const MAX_RECORDS_FOR_AI = 250;
+const MAX_ISSUES_FOR_AI = 500;
 
 const expectedFollowUpDays: Record<number, { day: number; tolerance: number }> = {
   1: { day: 1, tolerance: 1 },
@@ -258,6 +263,42 @@ function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
   return issues;
 }
 
+function buildIssueBreakdown(issues: LeadAuditIssue[]): LeadAuditPayload['deterministicIssueBreakdown'] {
+  const categoryMap = new Map<LeadAuditIssue['category'], { category: LeadAuditIssue['category']; count: number; high: number; medium: number; low: number }>();
+  const severityMap = new Map<LeadAuditSeverity, { severity: LeadAuditSeverity; count: number }>();
+  const leadMap = new Map<string, { leadId: string; leadName: string; count: number; categories: Set<LeadAuditIssue['category']> }>();
+
+  issues.forEach((issue) => {
+    const category = categoryMap.get(issue.category) ?? { category: issue.category, count: 0, high: 0, medium: 0, low: 0 };
+    category.count += 1;
+    category[issue.severity] += 1;
+    categoryMap.set(issue.category, category);
+
+    const severity = severityMap.get(issue.severity) ?? { severity: issue.severity, count: 0 };
+    severity.count += 1;
+    severityMap.set(issue.severity, severity);
+
+    const lead = leadMap.get(issue.leadId) ?? { leadId: issue.leadId, leadName: issue.leadName, count: 0, categories: new Set<LeadAuditIssue['category']>() };
+    lead.count += 1;
+    lead.categories.add(issue.category);
+    leadMap.set(issue.leadId, lead);
+  });
+
+  return {
+    byCategory: Array.from(categoryMap.values()).sort((a, b) => b.count - a.count),
+    bySeverity: Array.from(severityMap.values()).sort((a, b) => b.count - a.count),
+    topAffectedLeads: Array.from(leadMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 25)
+      .map((lead) => ({
+        leadId: lead.leadId,
+        leadName: lead.leadName,
+        count: lead.count,
+        categories: Array.from(lead.categories),
+      })),
+  };
+}
+
 export function buildLeadAuditPayload(leads: Lead[], referenceDate = new Date()): LeadAuditPayload {
   const to = startOfDay(referenceDate);
   const from = new Date(to);
@@ -301,6 +342,7 @@ export function buildLeadAuditPayload(leads: Lead[], referenceDate = new Date())
       'LR + 7 days: Follow Up 4',
       'Timeline is directional; apply reasonable operational tolerance.',
     ],
+    deterministicIssueBreakdown: buildIssueBreakdown(issues),
     deterministicIssues: issues.slice(0, MAX_ISSUES_FOR_AI),
     records: windowedLeads.slice(0, MAX_RECORDS_FOR_AI).map(buildRecord),
   };

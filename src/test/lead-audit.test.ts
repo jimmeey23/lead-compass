@@ -83,5 +83,22 @@ describe('lead audit payload', () => {
 
     expect(payload.deterministicIssues.some((issue) => issue.category === 'late_follow_up')).toBe(true);
     expect(payload.deterministicIssues.some((issue) => issue.category === 'copy_paste_follow_up')).toBe(true);
+    expect(payload.deterministicIssueBreakdown.byCategory.some((row) => row.category === 'late_follow_up' && row.count > 0)).toBe(true);
+    expect(payload.deterministicIssueBreakdown.topAffectedLeads[0]).toMatchObject({ leadId: 'late-copy' });
+  });
+
+  it('sends full large one-month windows to the Pro audit payload', () => {
+    const leads = Array.from({ length: 161 }, (_, index) => lead({
+      id: `lead-${index + 1}`,
+      fullName: `Lead ${index + 1}`,
+      createdAt: '2026-05-10',
+    }));
+
+    const payload = buildLeadAuditPayload(leads, new Date('2026-05-17T00:00:00'));
+
+    expect(payload.analysisWindow.includedLeads).toBe(161);
+    expect(payload.records).toHaveLength(161);
+    expect(payload.summary.deterministicIssueCount).toBe(966);
+    expect(payload.deterministicIssues).toHaveLength(500);
   });
 });

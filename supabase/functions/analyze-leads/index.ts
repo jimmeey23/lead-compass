@@ -13,7 +13,7 @@ const corsHeaders = {
 };
 
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
-const DEEPSEEK_MODEL = 'deepseek-v4-flash';
+const DEEPSEEK_MODEL = 'deepseek-v4-pro';
 
 function compactJson(value: unknown): string {
   return JSON.stringify(value);
@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         temperature: 0.1,
-        max_tokens: 1100,
+        max_tokens: 5000,
         response_format: { type: 'json_object' },
         messages: [
           {
@@ -60,8 +60,19 @@ Deno.serve(async (req: Request) => {
               'Do not return leadId alone unless the input leadName is empty.',
               'Do not flag missed, late, early, or copy-pasted follow-up issues when followUpAuditRequired is false.',
               'Treat followUpAuditExemption as authoritative for converted, membership sold, lost, or disqualified leads.',
-              'Return JSON only with keys: executiveSummary, urgentIssues, followUpTimingIssues, stageDiscrepancies, copyPasteSignals, recommendedActions.',
+              'Use deterministicIssues as the primary audit queue and records as supporting context.',
+              'Use deterministicIssueBreakdown for category counts, severity mix, and highest-impact leads before writing management insights.',
+              'Return arrays of all material issues up to 25 items per issue category; do not return only one representative issue when multiple issues exist.',
+              'Do not return a flat single issue object at the root.',
+              'Return a detailed operations report, not a short summary.',
+              'Return JSON only with keys: executiveSummary, keyFindings, operationalPatterns, riskIndicators, urgentIssues, followUpTimingIssues, stageDiscrepancies, copyPasteSignals, associateInsights, stageInsights, sourceInsights, recommendedActions, actionPlan.',
               'Each issue item should include leadName, leadId, severity, reason, evidence, recommendedAction.',
+              'keyFindings should be 4-8 concise findings with evidence or impact.',
+              'operationalPatterns should identify repeated process failures and where they occur.',
+              'riskIndicators should explain retention, revenue, conversion, or service risks.',
+              'associateInsights should identify coaching or workload patterns by associate only when supported by data.',
+              'stageInsights and sourceInsights should explain patterns by stage/source only when supported by data.',
+              'actionPlan items should include priority, action, owner, timeline, and successMetric.',
             ].join(' '),
           },
           {
@@ -69,6 +80,8 @@ Deno.serve(async (req: Request) => {
             content: [
               'Analyze this filtered lead dataset. It is capped to a maximum one-month window and prefiltered for token control.',
               'Focus on missed follow-ups, late/early follow-up cadence, missing welcome/call evidence, inconsistent comments versus stage/status, and copy-pasted follow-up notes.',
+              'Cross-check the summary.deterministicIssueCount against deterministicIssues. If there are many deterministic issues, summarize patterns in executiveSummary and return the highest-priority issue rows across categories.',
+              'Make the report useful for studio management: quantify patterns where possible, prioritize operational fixes, and separate evidence from recommendations.',
               compactJson(payload),
             ].join('\n'),
           },

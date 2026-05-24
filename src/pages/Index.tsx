@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { asRecord, auditText, formatAuditLabel, normalizeAuditReport, parseAuditResult, type NormalizedAuditReport } from '@/lib/audit-report';
 import { buildLeadAuditPayload } from '@/lib/lead-audit';
 import { applyLeadFilters, buildLeadOptions, buildLeadPerformanceSummary, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
@@ -97,30 +98,9 @@ type AuditIssueRow = {
   recommendedAction: string;
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null;
-}
-
-function formatAuditLabel(value: string): string {
-  return value.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase());
-}
-
-function auditText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (Array.isArray(value)) return value.map(auditText).filter(Boolean).join(', ');
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    return ['reason', 'summary', 'detail', 'message', 'recommendedAction']
-      .map((key) => auditText(record[key]))
-      .find(Boolean) ?? '';
-  }
-  return '';
-}
-
-function getAuditIssueRows(data: Record<string, unknown>, sections: string[], leadLabels = new Map<string, string>()): AuditIssueRow[] {
+function getAuditIssueRows(data: NormalizedAuditReport, sections: string[], leadLabels = new Map<string, string>()): AuditIssueRow[] {
   return sections.flatMap((section) => {
-    const value = data[section];
+    const value = data[section as keyof NormalizedAuditReport];
     if (!Array.isArray(value)) return [];
 
     return value.slice(0, 12).map((item): AuditIssueRow => {
@@ -149,96 +129,33 @@ function copyAuditText(label: string, text: string) {
     .catch(() => toast.error('Unable to copy', { description: 'Clipboard access is unavailable in this browser.' }));
 }
 
-function extractEmbeddedJson(text: string): string | null {
-  for (let start = 0; start < text.length; start += 1) {
-    const opener = text[start];
-    if (opener !== '{' && opener !== '[') continue;
+function ReportInsightSection({ title, items, icon: Icon = BrainCircuit }: { title: string; items: unknown[]; icon?: typeof BrainCircuit }) {
+  if (items.length === 0) return null;
 
-    const stack: string[] = [];
-    let inString = false;
-    let escaped = false;
+  return (
+    <section className="rounded-2xl border border-border bg-card/80 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.slice(0, 8).map((item, index) => {
+          const record = asRecord(item);
+          const headline = auditText(record?.title) || auditText(record?.priority) || auditText(record?.pattern) || auditText(record?.associate) || auditText(record?.stage) || auditText(record?.source) || auditText(record?.risk);
+          const body = auditText(record?.detail) || auditText(record?.insight) || auditText(record?.action) || auditText(record?.impact) || auditText(record?.evidence) || auditText(item);
+          const meta = [auditText(record?.owner), auditText(record?.timeline), auditText(record?.severity)].filter(Boolean).join(' • ');
 
-    for (let index = start; index < text.length; index += 1) {
-      const char = text[index];
-
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-          continue;
-        }
-
-        if (char === '\\') {
-          escaped = true;
-          continue;
-        }
-
-        if (char === '"') inString = false;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = true;
-        continue;
-      }
-
-      if (char === '{' || char === '[') {
-        stack.push(char);
-        continue;
-      }
-
-      if (char !== '}' && char !== ']') continue;
-
-      const expectedOpener = char === '}' ? '{' : '[';
-      if (stack.pop() !== expectedOpener) break;
-
-      if (stack.length === 0) {
-        const candidate = text.slice(start, index + 1);
-        try {
-          JSON.parse(candidate);
-          return candidate;
-        } catch {
-          break;
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-export function parseAuditResult(result: unknown, depth = 0): unknown {
-  if (depth > 6) return result;
-
-  if (typeof result === 'object' && result !== null) {
-    const record = result as Record<string, unknown>;
-    if ('analysis' in record && record.analysis !== undefined) {
-      return parseAuditResult(record.analysis, depth + 1);
-    }
-    return result;
-  }
-
-  if (typeof result !== 'string') return result;
-
-  const trimmed = result.trim();
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const unfencedCandidate = trimmed
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-  const directCandidate = fencedMatch?.[1]?.trim() ?? unfencedCandidate;
-  const candidates = [directCandidate, extractEmbeddedJson(trimmed)].filter((candidate): candidate is string => Boolean(candidate));
-
-  for (const jsonCandidate of candidates) {
-    if (!jsonCandidate.startsWith('{') && !jsonCandidate.startsWith('[') && !jsonCandidate.startsWith('"')) continue;
-
-    try {
-      return parseAuditResult(JSON.parse(jsonCandidate), depth + 1);
-    } catch {
-      // Try the next candidate before falling back to raw text.
-    }
-  }
-
-  return result;
+          return (
+            <div key={`${title}-${index}`} className="rounded-xl bg-muted/40 px-3 py-2">
+              {headline && <p className="text-xs font-semibold text-foreground">{headline}</p>}
+              {body && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>}
+              {meta && <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">{meta}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function AuditResultView({ result, payload }: { result: unknown; payload?: ReturnType<typeof buildLeadAuditPayload> | null }) {
@@ -260,7 +177,7 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
     );
   }
 
-  const data = parsedResult as Record<string, unknown>;
+  const data = normalizeAuditReport(parsedResult);
   const issueSections = ['urgentIssues', 'followUpTimingIssues', 'stageDiscrepancies', 'copyPasteSignals'];
   const leadLabels = new Map<string, string>();
   payload?.records.forEach((record) => {
@@ -279,17 +196,17 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
 
   return (
     <div className="space-y-5">
-      {typeof data.executiveSummary === 'string' && (
+      {data.executiveSummary && (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-start gap-3">
-            <div className="rounded-xl bg-primary/10 p-2 text-primary">
-              <BrainCircuit className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Executive summary</p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">{data.executiveSummary}</p>
-            </div>
+              <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                <BrainCircuit className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Executive summary</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{data.executiveSummary}</p>
+              </div>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={() => copyAuditText('Summary', summaryText)}>
@@ -305,7 +222,7 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
 
       <div className="grid gap-3 sm:grid-cols-4">
         {issueSections.map((section) => {
-          const count = Array.isArray(data[section]) ? data[section].length : 0;
+          const count = Array.isArray(data[section as keyof NormalizedAuditReport]) ? (data[section as keyof NormalizedAuditReport] as unknown[]).length : 0;
           const meta = auditSectionMeta[section];
           return (
             <div key={section} className={`rounded-2xl border p-3 ${meta.tone}`}>
@@ -315,6 +232,10 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
           );
         })}
       </div>
+
+      <ReportInsightSection title="Key findings" items={data.keyFindings} icon={BrainCircuit} />
+      <ReportInsightSection title="Operational patterns" items={data.operationalPatterns} icon={Route} />
+      <ReportInsightSection title="Risk indicators" items={data.riskIndicators} icon={AlertTriangle} />
 
       {issueRows.length > 0 ? (
         <div className="rounded-2xl border border-border bg-card/80">
@@ -360,6 +281,10 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
         <AuditSection key={section} title={section} value={data[section]} leadLabels={leadLabels} />
       ))}
 
+      <ReportInsightSection title="Associate coaching insights" items={data.associateInsights} icon={UserRound} />
+      <ReportInsightSection title="Stage insights" items={data.stageInsights} icon={Workflow} />
+      <ReportInsightSection title="Source insights" items={data.sourceInsights} icon={Building2} />
+
       {recommendedActions.length > 0 && (
         <section className="rounded-2xl border border-border bg-card/80 p-4">
           <div className="mb-3 flex items-center gap-2">
@@ -370,6 +295,25 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
             {recommendedActions.slice(0, 10).map((action, index) => (
               <div key={index} className="rounded-xl bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground">
                 {auditText(action) || String(action)}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <ReportInsightSection title="Priority action plan" items={data.actionPlan} icon={CheckCircle2} />
+
+      {data.additionalInsights.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card/80 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <BrainCircuit className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Additional insights</h3>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {data.additionalInsights.map((insight) => (
+              <div key={insight.label} className="rounded-xl bg-muted/40 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{insight.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-foreground">{auditText(insight.value)}</p>
               </div>
             ))}
           </div>
