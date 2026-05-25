@@ -1,5 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeAuditReport, parseAuditResult } from '@/lib/audit-report';
+import { mergeAuditReportWithDeterministicPayload, normalizeAuditReport, parseAuditResult } from '@/lib/audit-report';
+import { buildLeadAuditPayload } from '@/lib/lead-audit';
+import type { Lead } from '@/types/leads';
+
+const lead = (overrides: Partial<Lead>): Lead => ({
+  id: '1',
+  fullName: 'Audit Lead',
+  phoneNumber: '',
+  email: '',
+  createdAt: '2026-05-01',
+  sourceId: '',
+  sourceName: 'Instagram',
+  memberId: '',
+  convertedAt: '',
+  stageId: '',
+  stageName: 'Contacted',
+  associate: 'Associate',
+  remarks: '',
+  followUps: [
+    { index: 1, date: '', comment: '' },
+    { index: 2, date: '', comment: '' },
+    { index: 3, date: '', comment: '' },
+    { index: 4, date: '', comment: '' },
+  ],
+  center: 'Bandra',
+  classType: '',
+  hostId: '',
+  status: 'Active',
+  channel: '',
+  period: '',
+  purchasesMade: 0,
+  ltv: 0,
+  visits: 0,
+  trialStatus: '',
+  conversionStatus: '',
+  retentionStatus: '',
+  ...overrides,
+});
 
 describe('audit result parsing', () => {
   it('unwraps nested analysis JSON strings returned by the edge function', () => {
@@ -188,5 +225,43 @@ describe('audit result parsing', () => {
     expect(report.stageInsights).toHaveLength(1);
     expect(report.actionPlan).toHaveLength(1);
     expect(report.additionalInsights).toEqual([]);
+  });
+
+  it('backfills sparse AI reports with deterministic issue rows and management sections', () => {
+    const payload = buildLeadAuditPayload([
+      lead({
+        id: 'missing',
+        fullName: 'Missing Follow Up Lead',
+        createdAt: '2026-05-10',
+      }),
+      lead({
+        id: 'copy',
+        fullName: 'Copy Paste Lead',
+        createdAt: '2026-05-10',
+        followUps: [
+          { index: 1, date: '2026-05-11', comment: 'Called and no answer' },
+          { index: 2, date: '2026-05-13', comment: 'Called and no answer' },
+          { index: 3, date: '2026-05-15', comment: 'Called and no answer' },
+          { index: 4, date: '2026-05-17', comment: 'Called and no answer' },
+        ],
+      }),
+    ], new Date('2026-05-17T00:00:00'));
+
+    const report = mergeAuditReportWithDeterministicPayload(normalizeAuditReport({
+      executiveSummary: 'AI summary without rows.',
+      urgentIssues: [],
+      followUpTimingIssues: [],
+      stageDiscrepancies: [],
+      copyPasteSignals: [],
+      recommendedActions: [],
+    }), payload);
+
+    expect(report.executiveSummary).toContain(String(payload.summary.deterministicIssueCount));
+    expect(report.followUpTimingIssues.some((issue) => issue.leadName === 'Missing Follow Up Lead')).toBe(true);
+    expect(report.copyPasteSignals.some((issue) => issue.leadName === 'Copy Paste Lead')).toBe(true);
+    expect(report.keyFindings.length).toBeGreaterThan(0);
+    expect(report.operationalPatterns.length).toBeGreaterThan(0);
+    expect(report.riskIndicators.length).toBeGreaterThan(0);
+    expect(report.actionPlan.length).toBeGreaterThan(0);
   });
 });

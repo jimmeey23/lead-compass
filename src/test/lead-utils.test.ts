@@ -98,6 +98,34 @@ describe('lead utils', () => {
     expect(enriched[1].conversionStatus).toBe('Converted');
   });
 
+  it('enriches lead conversion data when the sales sheet uses Customer ID', () => {
+    const aliasedSalesRows = [
+      ['Customer ID', 'Payment Date', 'Payment Value', 'Payment Status', 'Cleaned Product', 'Cleaned Category', 'Purchase Tag'],
+      ['31756028', '2026-05-12 19:21:29', '161700', 'succeeded', 'Studio Annual Unlimited', 'Memberships', 'New'],
+    ];
+
+    const enriched = enrichLeadsWithSalesConversions([
+      { ...baseLead, id: '1', memberId: '31756028', createdAt: '2026-03-16', convertedAt: '', conversionStatus: '' },
+    ], aliasedSalesRows);
+
+    expect(enriched[0].convertedAt).toBe('2026-05-12 19:21:29');
+    expect(enriched[0].conversionStatus).toBe('Converted');
+  });
+
+  it('enriches lead conversion data when the sales Member ID header contains invisible characters', () => {
+    const formattedSalesRows = [
+      ['\uFEFFMember\u200B ID', 'Payment Date', 'Payment Value', 'Payment Status', 'Cleaned Product', 'Cleaned Category', 'Purchase Tag'],
+      ['31756028', '2026-05-12 19:21:29', '161700', 'succeeded', 'Studio Annual Unlimited', 'Memberships', 'New'],
+    ];
+
+    const enriched = enrichLeadsWithSalesConversions([
+      { ...baseLead, id: '1', memberId: '31756028', createdAt: '2026-03-16', convertedAt: '', conversionStatus: '' },
+    ], formattedSalesRows);
+
+    expect(enriched[0].convertedAt).toBe('2026-05-12 19:21:29');
+    expect(enriched[0].conversionStatus).toBe('Converted');
+  });
+
   it('only considers positive non-retail non-credit sales strictly after the lead creation date', () => {
     const constrainedSalesRows = [
       ['Member ID', 'Payment Date', 'Payment Value', 'Payment Status', 'Cleaned Product', 'Cleaned Category', 'Purchase Tag'],

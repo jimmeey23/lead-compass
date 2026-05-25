@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { asRecord, auditText, formatAuditLabel, normalizeAuditReport, parseAuditResult, type NormalizedAuditReport } from '@/lib/audit-report';
+import { asRecord, auditText, formatAuditLabel, mergeAuditReportWithDeterministicPayload, normalizeAuditReport, parseAuditResult, type NormalizedAuditReport } from '@/lib/audit-report';
 import { buildLeadAuditPayload } from '@/lib/lead-audit';
 import { applyLeadFilters, buildLeadOptions, buildLeadPerformanceSummary, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
@@ -177,7 +177,7 @@ function AuditResultView({ result, payload }: { result: unknown; payload?: Retur
     );
   }
 
-  const data = normalizeAuditReport(parsedResult);
+  const data = mergeAuditReportWithDeterministicPayload(normalizeAuditReport(parsedResult), payload);
   const issueSections = ['urgentIssues', 'followUpTimingIssues', 'stageDiscrepancies', 'copyPasteSignals'];
   const leadLabels = new Map<string, string>();
   payload?.records.forEach((record) => {

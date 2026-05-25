@@ -1,3 +1,5 @@
+import type { LeadAuditIssue, LeadAuditPayload } from '@/lib/lead-audit';
+
 export type NormalizedAuditIssue = {
   category?: string;
   leadName: string;
@@ -81,6 +83,206 @@ function issueSectionFor(issue: NormalizedAuditIssue): keyof Pick<NormalizedAudi
   if (text.includes('stage') || text.includes('status') || text.includes('discrep')) return 'stageDiscrepancies';
   if (text.includes('follow') || text.includes('cadence') || text.includes('timing') || text.includes('overdue') || text.includes('late')) return 'followUpTimingIssues';
   return 'urgentIssues';
+}
+
+function deterministicIssueSection(issue: LeadAuditIssue): keyof Pick<NormalizedAuditReport, 'urgentIssues' | 'followUpTimingIssues' | 'stageDiscrepancies' | 'copyPasteSignals'> {
+  if (issue.category === 'stage_comment_discrepancy') return 'stageDiscrepancies';
+  if (issue.category === 'copy_paste_follow_up') return 'copyPasteSignals';
+  if (issue.severity === 'high') return 'urgentIssues';
+  return 'followUpTimingIssues';
+}
+
+function issuePriority(severity: string): number {
+  const normalized = severity.toLowerCase();
+  if (normalized.includes('high') || normalized.includes('urgent')) return 0;
+  if (normalized.includes('medium')) return 1;
+  return 2;
+}
+
+function recommendedActionForDeterministicIssue(issue: LeadAuditIssue): string {
+  switch (issue.category) {
+    case 'missing_follow_up':
+      return 'Complete the missing follow-up entry and contact the lead according to the LR cadence.';
+    case 'late_follow_up':
+      return 'Contact the lead and coach the assigned associate on expected follow-up timing.';
+    case 'early_follow_up':
+      return 'Verify the follow-up date and correct the log if the entry was backfilled incorrectly.';
+    case 'missing_welcome_message':
+      return 'Add welcome message evidence or send the initial WhatsApp/DM if it was missed.';
+    case 'missing_phone_call':
+      return 'Log phone call evidence or place the pending call attempt.';
+    case 'stage_comment_discrepancy':
+      return 'Reconcile the lead stage/status with the latest contact comments before management review.';
+    case 'copy_paste_follow_up':
+      return 'Replace repeated notes with the actual lead-specific conversation outcome.';
+    default:
+      return 'Review the lead record and update the follow-up trail.';
+  }
+}
+
+function deterministicIssueKey(issue: Pick<NormalizedAuditIssue, 'leadId' | 'leadName' | 'category' | 'reason' | 'evidence'>): string {
+  return [
+    issue.leadId,
+    issue.leadName,
+    issue.category,
+    issue.reason,
+    issue.evidence,
+  ].map((value) => auditText(value).toLowerCase().trim()).join('|');
+}
+
+function normalizedIssueFromDeterministicIssue(issue: LeadAuditIssue): NormalizedAuditIssue {
+  return {
+    category: issue.category,
+    leadName: issue.leadName || issue.leadId,
+    leadId: issue.leadId,
+    severity: issue.severity,
+    reason: issue.detail,
+    evidence: issue.evidence,
+    recommendedAction: recommendedActionForDeterministicIssue(issue),
+  };
+}
+
+function deterministicSummary(payload: LeadAuditPayload): string {
+  const topCategories = payload.deterministicIssueBreakdown.byCategory
+    .slice(0, 3)
+    .map((row) => `${row.count} ${row.category.replace(/_/g, ' ')}`)
+    .join(', ');
+  const topLeads = payload.deterministicIssueBreakdown.topAffectedLeads
+    .slice(0, 3)
+    .map((lead) => `${lead.leadName} (${lead.count})`)
+    .join(', ');
+
+  return [
+    `Local deterministic pre-audit found ${payload.summary.deterministicIssueCount} issue${payload.summary.deterministicIssueCount === 1 ? '' : 's'} across ${payload.analysisWindow.includedLeads} lead${payload.analysisWindow.includedLeads === 1 ? '' : 's'}.`,
+    topCategories ? `Top issue categories: ${topCategories}.` : '',
+    topLeads ? `Highest-impact leads: ${topLeads}.` : '',
+  ].filter(Boolean).join(' ');
+}
+
+function deterministicKeyFindings(payload: LeadAuditPayload): unknown[] {
+  const findings: unknown[] = [];
+  const highSeverity = payload.deterministicIssueBreakdown.bySeverity.find((row) => row.severity === 'high')?.count ?? 0;
+  const mediumSeverity = payload.deterministicIssueBreakdown.bySeverity.find((row) => row.severity === 'medium')?.count ?? 0;
+
+  if (payload.summary.deterministicIssueCount > 0) {
+    findings.push({
+      title: 'Deterministic issue queue',
+      detail: `${payload.summary.deterministicIssueCount} locally detected audit issues require review before relying on AI interpretation.`,
+      evidence: `${highSeverity} high-severity and ${mediumSeverity} medium-severity issues found.`,
+    });
+  }
+
+  payload.deterministicIssueBreakdown.byCategory.slice(0, 4).forEach((row) => {
+    findings.push({
+      title: row.category.replace(/_/g, ' '),
+      detail: `${row.count} issue${row.count === 1 ? '' : 's'} detected in this category.`,
+      evidence: `${row.high} high, ${row.medium} medium, ${row.low} low.`,
+    });
+  });
+
+  return findings;
+}
+
+function deterministicOperationalPatterns(payload: LeadAuditPayload): unknown[] {
+  return payload.deterministicIssueBreakdown.byCategory.slice(0, 5).map((row) => ({
+    pattern: row.category.replace(/_/g, ' '),
+    insight: `${row.count} repeated signal${row.count === 1 ? '' : 's'} found in the filtered audit window.`,
+    evidence: `Severity mix: ${row.high} high / ${row.medium} medium / ${row.low} low.`,
+  }));
+}
+
+function deterministicRiskIndicators(payload: LeadAuditPayload): unknown[] {
+  if (payload.summary.deterministicIssueCount === 0) return [];
+
+  return [
+    {
+      risk: 'Conversion leakage',
+      impact: 'Missed or late early-journey follow-ups can reduce trial booking and membership conversion momentum.',
+      evidence: `${payload.summary.deterministicIssueCount} local audit flags in a ${payload.analysisWindow.maxDays}-day window.`,
+    },
+    {
+      risk: 'Management visibility',
+      impact: 'Sparse or repeated comments weaken lead handoff quality and make associate coaching harder.',
+      evidence: payload.deterministicIssueBreakdown.byCategory.map((row) => `${row.category}: ${row.count}`).join(', '),
+    },
+  ];
+}
+
+function deterministicActionPlan(payload: LeadAuditPayload): unknown[] {
+  if (payload.summary.deterministicIssueCount === 0) return [];
+
+  return [
+    {
+      priority: 'High',
+      action: 'Work the deterministic issue queue from high severity to low severity and update each lead record with specific evidence.',
+      owner: 'Studio management / Client Success',
+      timeline: 'Same business day',
+      successMetric: 'All high-severity deterministic audit rows are resolved or deliberately exempted.',
+    },
+    {
+      priority: 'Medium',
+      action: 'Review the top affected leads and category breakdown in associate coaching.',
+      owner: 'Studio management',
+      timeline: 'Next coaching cycle',
+      successMetric: 'Repeat missing follow-up and copy-paste categories decline in the next audit window.',
+    },
+  ];
+}
+
+function deterministicRecommendedActions(payload: LeadAuditPayload): unknown[] {
+  return payload.deterministicIssueBreakdown.byCategory.slice(0, 4).map((row) => ({
+    action: `Resolve ${row.count} ${row.category.replace(/_/g, ' ')} issue${row.count === 1 ? '' : 's'} in the deterministic audit queue.`,
+    priority: row.high > 0 ? 'High' : row.medium > 0 ? 'Medium' : 'Low',
+  }));
+}
+
+function mergeUniqueIssues(existing: NormalizedAuditIssue[], additions: NormalizedAuditIssue[]): NormalizedAuditIssue[] {
+  const seen = new Set(existing.map(deterministicIssueKey));
+  const merged = [...existing];
+
+  additions
+    .sort((a, b) => issuePriority(a.severity) - issuePriority(b.severity))
+    .forEach((issue) => {
+      const key = deterministicIssueKey(issue);
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(issue);
+    });
+
+  return merged.slice(0, 25);
+}
+
+export function mergeAuditReportWithDeterministicPayload(report: NormalizedAuditReport, payload?: LeadAuditPayload | null): NormalizedAuditReport {
+  if (!payload || payload.summary.deterministicIssueCount === 0) return report;
+
+  const additionsBySection = payload.deterministicIssues.reduce<Record<keyof Pick<NormalizedAuditReport, 'urgentIssues' | 'followUpTimingIssues' | 'stageDiscrepancies' | 'copyPasteSignals'>, NormalizedAuditIssue[]>>((sections, issue) => {
+    sections[deterministicIssueSection(issue)].push(normalizedIssueFromDeterministicIssue(issue));
+    return sections;
+  }, {
+    urgentIssues: [],
+    followUpTimingIssues: [],
+    stageDiscrepancies: [],
+    copyPasteSignals: [],
+  });
+  const nextReport: NormalizedAuditReport = {
+    ...report,
+    urgentIssues: mergeUniqueIssues(report.urgentIssues, additionsBySection.urgentIssues),
+    followUpTimingIssues: mergeUniqueIssues(report.followUpTimingIssues, additionsBySection.followUpTimingIssues),
+    stageDiscrepancies: mergeUniqueIssues(report.stageDiscrepancies, additionsBySection.stageDiscrepancies),
+    copyPasteSignals: mergeUniqueIssues(report.copyPasteSignals, additionsBySection.copyPasteSignals),
+    keyFindings: [...report.keyFindings, ...deterministicKeyFindings(payload)].slice(0, 8),
+    operationalPatterns: [...report.operationalPatterns, ...deterministicOperationalPatterns(payload)].slice(0, 8),
+    riskIndicators: [...report.riskIndicators, ...deterministicRiskIndicators(payload)].slice(0, 8),
+    actionPlan: [...report.actionPlan, ...deterministicActionPlan(payload)].slice(0, 8),
+    recommendedActions: [...report.recommendedActions, ...deterministicRecommendedActions(payload)].slice(0, 10),
+  };
+
+  const localSummary = deterministicSummary(payload);
+  nextReport.executiveSummary = report.executiveSummary
+    ? `${localSummary} AI summary: ${report.executiveSummary}`
+    : localSummary;
+
+  return nextReport;
 }
 
 function hasRootIssueShape(record: Record<string, unknown>): boolean {

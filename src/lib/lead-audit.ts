@@ -112,6 +112,12 @@ function isConvertedOrMembershipSold(lead: Lead): boolean {
   return /converted|membership sold|sold/.test(normalizedLeadText(lead));
 }
 
+function hasContradictoryStageSignals(lead: Lead): boolean {
+  const lostOrDisqualified = isDisqualifiedOrLost(lead);
+  const convertedOrSold = isConvertedOrMembershipSold(lead) || lead.purchasesMade > 0 || lead.ltv > 0;
+  return lostOrDisqualified && convertedOrSold;
+}
+
 function getFollowUpAuditExemption(lead: Lead): string {
   if (isDisqualifiedOrLost(lead)) return 'Lead is disqualified, lost, or not interested.';
   if (isConvertedOrMembershipSold(lead)) return 'Lead is converted or stage is membership sold.';
@@ -249,6 +255,15 @@ function detectLeadIssues(lead: Lead): LeadAuditIssue[] {
         evidence: `Repeated follow-up indexes: ${Array.from(new Set(repeated.map((item) => item.index))).join(', ')}.`,
       });
     }
+  }
+
+  if (hasContradictoryStageSignals(lead)) {
+    addIssue(issues, lead, {
+      severity: 'high',
+      category: 'stage_comment_discrepancy',
+      detail: 'Lead has both lost/disqualified and converted/sold or purchase signals.',
+      evidence: `Stage/status/conversion: ${lead.stageName || '-'} / ${lead.status || '-'} / ${lead.conversionStatus || '-'}; purchases ${lead.purchasesMade}; LTV ${lead.ltv}.`,
+    });
   }
 
   if (/trial completed|converted|sold/.test(normalizedLeadText(lead)) && /no answer|not connected|did not answer|no response/.test(comments)) {

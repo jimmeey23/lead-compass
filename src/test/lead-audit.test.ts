@@ -87,6 +87,26 @@ describe('lead audit payload', () => {
     expect(payload.deterministicIssueBreakdown.topAffectedLeads[0]).toMatchObject({ leadId: 'late-copy' });
   });
 
+  it('flags contradictory lost and converted signals as stage discrepancies', () => {
+    const payload = buildLeadAuditPayload([
+      lead({
+        id: 'contradictory-stage',
+        fullName: 'Contradictory Stage Lead',
+        createdAt: '2026-05-10',
+        status: 'Lost',
+        conversionStatus: 'Converted',
+        purchasesMade: 1,
+        ltv: 12000,
+      }),
+    ], new Date('2026-05-17T00:00:00'));
+
+    expect(payload.deterministicIssues).toContainEqual(expect.objectContaining({
+      leadId: 'contradictory-stage',
+      category: 'stage_comment_discrepancy',
+      severity: 'high',
+    }));
+  });
+
   it('sends full large one-month windows to the Pro audit payload', () => {
     const leads = Array.from({ length: 161 }, (_, index) => lead({
       id: `lead-${index + 1}`,

@@ -343,7 +343,10 @@ export function buildLeadOptions(leads: Lead[]): LeadOptionSets {
 }
 
 function normalizeHeader(value: string): string {
-  return cleanLooseText(value).toLowerCase();
+  return cleanLooseText(value)
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .toLowerCase();
 }
 
 function findColumnIndex(headers: string[], candidates: string[]): number {
@@ -371,7 +374,7 @@ function formatConversionDateForLead(value: string): string {
 
 function getSalesConversionRows(salesRows: string[][]) {
   const [headers = [], ...rows] = salesRows;
-  const memberIdIndex = findColumnIndex(headers, ['Member ID']);
+  const memberIdIndex = findColumnIndex(headers, ['Member ID', 'Customer ID', 'Client ID', 'User ID']);
   const paymentDateIndex = findColumnIndex(headers, ['Payment Date']);
   const paymentValueIndex = findColumnIndex(headers, ['Payment Value']);
   const paymentStatusIndex = findColumnIndex(headers, ['Payment Status']);

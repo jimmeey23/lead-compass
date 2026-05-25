@@ -13,8 +13,21 @@ export const REQUIRED_SALES_HEADERS = [
   'Purchase Tag',
 ] as const;
 
+const SALES_HEADER_ALIASES: Partial<Record<typeof REQUIRED_SALES_HEADERS[number], string[]>> = {
+  'Member ID': ['Customer ID', 'Client ID', 'User ID'],
+};
+
 function normalizeHeader(value: string): string {
-  return String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  return String(value ?? '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function getSalesHeaderCandidates(requiredHeader: typeof REQUIRED_SALES_HEADERS[number]): string[] {
+  return [requiredHeader, ...(SALES_HEADER_ALIASES[requiredHeader] ?? [])];
 }
 
 export function columnIndexToLetter(index: number): string {
@@ -36,9 +49,11 @@ export function columnIndexToLetter(index: number): string {
 
 export function getRequiredSalesColumnRanges(headers: string[], sheetName = 'sales'): string[] {
   return REQUIRED_SALES_HEADERS.map((requiredHeader) => {
-    const columnIndex = headers.findIndex((header) => normalizeHeader(header) === normalizeHeader(requiredHeader));
+    const normalizedCandidates = getSalesHeaderCandidates(requiredHeader).map(normalizeHeader);
+    const columnIndex = headers.findIndex((header) => normalizedCandidates.includes(normalizeHeader(header)));
     if (columnIndex < 0) {
-      throw new Error(`Required sales column missing: ${requiredHeader}`);
+      const availableHeaders = headers.map((header) => JSON.stringify(String(header ?? ''))).join(', ') || '(none)';
+      throw new Error(`Required sales column missing: ${requiredHeader}. Headers fetched from ${sheetName}!1:1: ${availableHeaders}`);
     }
 
     const column = columnIndexToLetter(columnIndex);
