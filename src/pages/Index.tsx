@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { asRecord, auditText, formatAuditLabel, mergeAuditReportWithDeterministicPayload, normalizeAuditReport, parseAuditResult, type NormalizedAuditReport } from '@/lib/audit-report';
+import { getAuditDialogRenderState } from '@/lib/audit-ui';
 import { buildLeadAuditPayload } from '@/lib/lead-audit';
 import { applyLeadFilters, buildLeadOptions, buildLeadPerformanceSummary, getCurrentWeekRangeLabel, getDateNeutralFilters } from '@/lib/lead-utils';
 
@@ -384,6 +385,7 @@ const Index = () => {
   const [auditScopeLabel, setAuditScopeLabel] = useState('Filtered dashboard');
   const [auditPayload, setAuditPayload] = useState<ReturnType<typeof buildLeadAuditPayload> | null>(null);
   const [auditResult, setAuditResult] = useState<unknown>(null);
+  const [isAuditGenerating, setIsAuditGenerating] = useState(false);
   const leadAudit = useLeadAudit();
 
   const filteredLeads = useMemo(() => applyLeadFilters(leads, filters), [leads, filters]);
@@ -393,6 +395,13 @@ const Index = () => {
   const weekRangeLabel = useMemo(() => getCurrentWeekRangeLabel(), []);
   const isTableWorkspace = view === 'table' || view === 'compact';
   const isWideWorkspace = isTableWorkspace || view === 'journey-flow';
+  const auditDialogState = getAuditDialogRenderState({
+    hasPayload: Boolean(auditPayload),
+    hasResult: Boolean(auditResult),
+    isAuditGenerating,
+    isMutationPending: leadAudit.isPending,
+  });
+  const isAuditBusy = auditDialogState === 'loading';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -451,6 +460,7 @@ const Index = () => {
     setAuditPayload(payload);
     setAuditResult(null);
     setAuditScopeLabel(scopeLabel);
+    setIsAuditGenerating(true);
     setIsAssociateAuditDialogOpen(false);
     setIsAuditDialogOpen(true);
 
@@ -461,6 +471,8 @@ const Index = () => {
       const description = error instanceof Error ? error.message : 'DeepSeek analysis failed.';
       toast.error('Unable to run DeepSeek audit', { description });
       setAuditResult({ error: description });
+    } finally {
+      setIsAuditGenerating(false);
     }
   };
 
@@ -550,10 +562,10 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={runLeadAudit}
-                disabled={leadAudit.isPending}
+                disabled={isAuditBusy}
                 className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
               >
-                <BrainCircuit className={`h-3.5 w-3.5 ${leadAudit.isPending ? 'animate-pulse' : ''}`} />
+                <BrainCircuit className={`h-3.5 w-3.5 ${isAuditBusy ? 'animate-pulse' : ''}`} />
                 AI Audit
               </Button>
               <Button
@@ -563,7 +575,7 @@ const Index = () => {
                   setSelectedAssociateForAudit(options.associates[0] ?? '');
                   setIsAssociateAuditDialogOpen(true);
                 }}
-                disabled={leadAudit.isPending || options.associates.length === 0}
+                disabled={isAuditBusy || options.associates.length === 0}
                 className="h-9 shrink-0 gap-1.5 rounded-xl border-border/70 bg-card/90 text-xs font-semibold text-foreground shadow-sm backdrop-blur-xl hover:border-primary/40 hover:bg-primary/10"
               >
                 <UserRound className="h-3.5 w-3.5" />
@@ -698,7 +710,7 @@ const Index = () => {
           </div>
           <DialogFooter className="border-t border-border/30 px-6 py-4">
             <Button variant="outline" className="rounded-xl" onClick={() => setIsAssociateAuditDialogOpen(false)}>Cancel</Button>
-            <Button className="rounded-xl" onClick={runAssociateAudit} disabled={leadAudit.isPending}>
+            <Button className="rounded-xl" onClick={runAssociateAudit} disabled={isAuditBusy}>
               <BrainCircuit className="h-4 w-4" /> Generate report
             </Button>
           </DialogFooter>
@@ -729,17 +741,17 @@ const Index = () => {
               </div>
             )}
 
-            {leadAudit.isPending && (
+            {auditDialogState === 'loading' && (
               <div className="rounded-2xl border border-border bg-muted/45 p-5 text-sm text-muted-foreground">
-                Running DeepSeek audit on compact issue payload...
+                Running DeepSeek audit on compact issue payload. Larger lead windows can take 60-120 seconds.
               </div>
             )}
 
-            {!leadAudit.isPending && auditResult && (
+            {auditDialogState === 'result' && (
               <AuditResultView result={auditResult} payload={auditPayload} />
             )}
 
-            {!leadAudit.isPending && !auditResult && auditPayload && (
+            {auditDialogState === 'localPreview' && auditPayload && (
               <AuditLocalPreview payload={auditPayload} />
             )}
           </div>
