@@ -18,6 +18,7 @@ import {
   getElapsedDaysLabel,
   type LeadRenderDataRow,
 } from '@/lib/lead-utils';
+import { getGroupedSummaryDescription, type SummaryCountRow } from '@/lib/summary-counts';
 import { LeadHoverInfo, LeadStageBadge } from './LeadDisplay';
 import { Button } from '@/components/ui/button';
 import { MultiSelectDropdown } from './MultiSelectDropdown';
@@ -899,7 +900,7 @@ function SummaryCountTable({
   dark = false,
 }: {
   title: string;
-  rows: Array<{ label: string; count: number; share: number; detail?: string; groupedCount?: number }>;
+  rows: SummaryCountRow[];
   rowLimit: number;
   totalCount: number;
   dark?: boolean;
@@ -928,22 +929,27 @@ function SummaryCountTable({
           </tr>
         </thead>
         <tbody>
-          {visibleRows.length > 0 ? visibleRows.map((row) => (
-            <tr key={row.label} className={`border-t ${dark ? 'border-border/50' : 'border-border/20'}`}>
-              <td className={`px-3 py-2 text-xs ${dark ? 'text-foreground' : 'text-foreground'}`}>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{row.label}</p>
-                  {row.groupedCount && row.groupedCount > 1 && (
-                    <p className={`mt-0.5 truncate text-[10px] ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`} title={row.detail}>
-                      {row.groupedCount} stages grouped
-                    </p>
-                  )}
-                </div>
-              </td>
-              <td className={`px-2 py-2 text-right text-xs font-semibold ${dark ? 'text-foreground' : 'text-foreground'}`}>{row.count}</td>
-              <td className={`px-2 py-2 text-right text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{row.share.toFixed(1)}%</td>
-            </tr>
-          )) : (
+          {visibleRows.length > 0 ? visibleRows.map((row) => {
+            const groupedDescription = getGroupedSummaryDescription(title, row);
+
+            return (
+              <tr key={row.label} className={`border-t ${dark ? 'border-border/50' : 'border-border/20'}`}>
+                <td className={`px-3 py-2 text-xs ${dark ? 'text-foreground' : 'text-foreground'}`}>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{row.label}</p>
+                    {groupedDescription && (
+                      <div className={`mt-0.5 space-y-0.5 text-[10px] leading-snug ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`} title={groupedDescription.tooltip}>
+                        <p className="truncate">{groupedDescription.countLabel}</p>
+                        <p className="line-clamp-2">{groupedDescription.detailLabel}</p>
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className={`px-2 py-2 text-right text-xs font-semibold ${dark ? 'text-foreground' : 'text-foreground'}`}>{row.count}</td>
+                <td className={`px-2 py-2 text-right text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{row.share.toFixed(1)}%</td>
+              </tr>
+            );
+          }) : (
             <tr>
               <td colSpan={3} className={`px-3 py-4 text-center text-xs ${dark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>No rows match the current filters.</td>
             </tr>
