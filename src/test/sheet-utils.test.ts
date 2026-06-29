@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   columnIndexToLetter,
   combineColumnValueRanges,
+  getOptionalSalesColumnRanges,
   getRequiredSalesColumnRanges,
 } from '../../supabase/functions/fetch-leads/sheet-utils';
 
@@ -22,7 +23,6 @@ describe('fetch-leads sheet utils', () => {
       'Payment Status',
       'Cleaned Product',
       'Cleaned Category',
-      'Purchase Tag',
     ];
 
     expect(getRequiredSalesColumnRanges(headers)).toEqual([
@@ -32,7 +32,6 @@ describe('fetch-leads sheet utils', () => {
       'sales!E:E',
       'sales!F:F',
       'sales!G:G',
-      'sales!H:H',
     ]);
   });
 
@@ -45,7 +44,6 @@ describe('fetch-leads sheet utils', () => {
       'Payment Status',
       'Cleaned Product',
       'Cleaned Category',
-      'Purchase Tag',
     ];
 
     expect(getRequiredSalesColumnRanges(headers)).toEqual([
@@ -55,7 +53,6 @@ describe('fetch-leads sheet utils', () => {
       'sales!E:E',
       'sales!F:F',
       'sales!G:G',
-      'sales!H:H',
     ]);
   });
 
@@ -67,7 +64,6 @@ describe('fetch-leads sheet utils', () => {
       'Payment Status',
       'Cleaned Product',
       'Cleaned Category',
-      'Purchase Tag',
     ];
 
     expect(getRequiredSalesColumnRanges(headers)).toEqual([
@@ -77,6 +73,21 @@ describe('fetch-leads sheet utils', () => {
       'sales!D:D',
       'sales!E:E',
       'sales!F:F',
+    ]);
+  });
+
+  it('includes optional sales columns only when present', () => {
+    const headers = [
+      'Member ID',
+      'Payment Date',
+      'Payment Value',
+      'Payment Status',
+      'Cleaned Product',
+      'Cleaned Category',
+      'Purchase Tag',
+    ];
+
+    expect(getOptionalSalesColumnRanges(headers)).toEqual([
       'sales!G:G',
     ]);
   });

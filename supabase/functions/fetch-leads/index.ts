@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { combineColumnValueRanges, getRequiredSalesColumnRanges } from './sheet-utils.ts';
+import { combineColumnValueRanges, getOptionalSalesColumnRanges, getRequiredSalesColumnRanges } from './sheet-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,7 +56,11 @@ async function fetchSalesValues(accessToken: string) {
   const headerData = await fetchSheetValues(accessToken, SALES_SHEET_ID, SALES_HEADER_RANGE);
   const headers = headerData.values?.[0] ?? [];
   const salesColumnRanges = getRequiredSalesColumnRanges(headers);
-  const salesColumnData = await batchFetchSheetValues(accessToken, SALES_SHEET_ID, salesColumnRanges);
+  const optionalSalesColumnRanges = getOptionalSalesColumnRanges(headers);
+  const salesColumnData = await batchFetchSheetValues(accessToken, SALES_SHEET_ID, [
+    ...salesColumnRanges,
+    ...optionalSalesColumnRanges,
+  ]);
 
   return combineColumnValueRanges(salesColumnData.valueRanges ?? []);
 }

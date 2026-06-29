@@ -10,12 +10,17 @@ export const REQUIRED_SALES_HEADERS = [
   'Payment Status',
   'Cleaned Product',
   'Cleaned Category',
-  'Purchase Tag',
 ] as const;
 
 const SALES_HEADER_ALIASES: Partial<Record<typeof REQUIRED_SALES_HEADERS[number], string[]>> = {
   'Member ID': ['Customer ID', 'Client ID', 'User ID'],
 };
+
+export const OPTIONAL_SALES_HEADERS = [
+  'Purchase Tag',
+] as const;
+
+const SALES_OPTIONAL_HEADER_ALIASES: Partial<Record<typeof OPTIONAL_SALES_HEADERS[number], string[]>> = {};
 
 function normalizeHeader(value: string): string {
   return String(value ?? '')
@@ -28,6 +33,10 @@ function normalizeHeader(value: string): string {
 
 function getSalesHeaderCandidates(requiredHeader: typeof REQUIRED_SALES_HEADERS[number]): string[] {
   return [requiredHeader, ...(SALES_HEADER_ALIASES[requiredHeader] ?? [])];
+}
+
+function getOptionalSalesHeaderCandidates(optionalHeader: typeof OPTIONAL_SALES_HEADERS[number]): string[] {
+  return [optionalHeader, ...(SALES_OPTIONAL_HEADER_ALIASES[optionalHeader] ?? [])];
 }
 
 export function columnIndexToLetter(index: number): string {
@@ -58,6 +67,19 @@ export function getRequiredSalesColumnRanges(headers: string[], sheetName = 'sal
 
     const column = columnIndexToLetter(columnIndex);
     return `${sheetName}!${column}:${column}`;
+  });
+}
+
+export function getOptionalSalesColumnRanges(headers: string[], sheetName = 'sales'): string[] {
+  return OPTIONAL_SALES_HEADERS.flatMap((optionalHeader) => {
+    const normalizedCandidates = getOptionalSalesHeaderCandidates(optionalHeader).map(normalizeHeader);
+    const columnIndex = headers.findIndex((header) => normalizedCandidates.includes(normalizeHeader(header)));
+    if (columnIndex < 0) {
+      return [];
+    }
+
+    const column = columnIndexToLetter(columnIndex);
+    return [`${sheetName}!${column}:${column}`];
   });
 }
 
